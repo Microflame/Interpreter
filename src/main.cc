@@ -3,6 +3,8 @@
 
 
 #include "scanner/scanner.h"
+#include "parser/expr.h"
+#include "experimental/ast_printer.h"
 
 int ReadFile(const char* path)
 {
@@ -26,15 +28,20 @@ int RunPrompt()
 
 int main(int argc, const char* argv[])
 {
-  int retval = 0;
-  if (argc > 1)
-  {
-    retval = ReadFile(argv[1]);
-  }
-  else
-  {
-    // ReadFile("example.inp");
-    retval = RunPrompt();
-  }
+  Token minus(Token::MINUS, "-", 1);
+  Token num123(Token::INT_LITERAL, "123", 3);
+  Literal literal(num123);
+  Unary unary(minus, literal);
+
+  std::cout << AstPrinter::GetValue(unary) << "\n";
+  // int retval = 0;
+  // if (argc > 1)
+  // {
+  //   retval = ReadFile(argv[1]);
+  // }
+  // else
+  // {
+  //   retval = RunPrompt();
+  // }
   return 0;
 }
