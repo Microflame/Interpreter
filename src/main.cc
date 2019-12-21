@@ -26,22 +26,24 @@ int RunPrompt()
   return 1;
 }
 
+void TestAst()
+{
+  auto unary = std::make_shared<Unary>(std::make_shared<Token>(Token::MINUS, "-", 1),
+                                       std::make_shared<Literal>(std::make_shared<Token>(Token::INT_LITERAL, "123", 3)));
+
+  std::cout << AstPrinter::GetValue(*unary) << "\n";
+}
+
 int main(int argc, const char* argv[])
 {
-  Token minus(Token::MINUS, "-", 1);
-  Token num123(Token::INT_LITERAL, "123", 3);
-  Literal literal(num123);
-  Unary unary(minus, literal);
-
-  std::cout << AstPrinter::GetValue(unary) << "\n";
-  // int retval = 0;
-  // if (argc > 1)
-  // {
-  //   retval = ReadFile(argv[1]);
-  // }
-  // else
-  // {
-  //   retval = RunPrompt();
-  // }
+  int retval = 0;
+  if (argc > 1)
+  {
+    retval = ReadFile(argv[1]);
+  }
+  else
+  {
+    retval = RunPrompt();
+  }
   return 0;
 }

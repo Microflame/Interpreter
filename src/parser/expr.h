@@ -4,6 +4,9 @@
 
 #include "scanner/scanner.h"
 
+template <typename T>
+using Ptr = std::shared_ptr<T>;
+
 class Binary;
 class Grouping;
 class Literal;
@@ -32,50 +35,50 @@ public:
 class Binary: public Expr
 {
 public:
-  Binary(Expr& left, Token& op, Expr& right)
-    : left_(&left), op_(&op), right_(&right)
+  Binary(Ptr<Expr> left, Ptr<Token> op, Ptr<Expr> right)
+    : left_(left), op_(op), right_(right)
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
 
-  Expr* left_;
-  Token* op_;
-  Expr* right_;
+  Ptr<Expr> left_;
+  Ptr<Token> op_;
+  Ptr<Expr> right_;
 };
 
 class Grouping: public Expr
 {
 public:
-  Grouping(Expr& expr)
-    : expr_(&expr)
+  Grouping(Ptr<Expr> expr)
+    : expr_(expr)
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
 
-  Expr* expr_;
+  Ptr<Expr> expr_;
 };
 
 class Literal: public Expr
 {
 public:
-  Literal(Token& val)
-    : val_(&val)
+  Literal(Ptr<Token> val)
+    : val_(val)
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
 
-  Token* val_;
+  Ptr<Token> val_;
 };
 
 class Unary: public Expr
 {
 public:
-  Unary(Token& op, Expr& right)
-    : op_(&op), right_(&right)
+  Unary(Ptr<Token> op, Ptr<Expr> right)
+    : op_(op), right_(right)
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
 
-  Token* op_;
-  Expr* right_;
+  Ptr<Token> op_;
+  Ptr<Expr> right_;
 };
