@@ -32,7 +32,7 @@ public:
     while (true)
     {
       Token tok = GetNextToken();
-      if (tok.GetType() == Token::EMPTY_TOKEN)
+      if (tok.GetType() == Token::EMPTY_TOKEN || tok.GetType() == Token::COMMENT)
       {
         continue;
       }

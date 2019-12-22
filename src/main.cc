@@ -4,6 +4,7 @@
 
 #include "scanner/scanner.h"
 #include "parser/expr.h"
+#include "parser/parser.h"
 #include "experimental/ast_printer.h"
 
 int ReadFile(const char* path)
@@ -13,29 +14,20 @@ int ReadFile(const char* path)
   {
     std::cerr << "Can not open " << path << "\n";
   }
-  scanner::Scanner scan(fin);
-  std::vector<scanner::Token> tokens = scan.GetTokens();
-  for (const auto& t: tokens)
-  {
-    std::cout << t.ToString() << "\n";
-  }
+
+  scanner::Scanner scanner(fin);
+  std::vector<scanner::Token> tokens = scanner.GetTokens();
+
+  parser::Parser parser(tokens);
+  std::shared_ptr<parser::Expr> expr = parser.Parse();
+
+  std::cout << AstPrinter::GetValue(*expr) << "\n";
+  return 0;
 }
 
 int RunPrompt()
 {
   return 1;
-}
-
-void TestAst()
-{
-  auto unary = std::make_shared<parser::Unary>(
-                 std::make_shared<scanner::Token>(scanner::Token::MINUS, "-", 1),
-                 std::make_shared<parser::Literal>(
-                   std::make_shared<scanner::Token>(scanner::Token::INT_LITERAL, "123", 3)
-                 )
-               );
-
-  std::cout << AstPrinter::GetValue(*unary) << "\n";
 }
 
 int main(int argc, const char* argv[])
@@ -49,5 +41,5 @@ int main(int argc, const char* argv[])
   {
     retval = RunPrompt();
   }
-  return 0;
+  return retval;
 }

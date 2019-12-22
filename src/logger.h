@@ -15,7 +15,7 @@ public:
   };
 
   Logger(LogLevel log_level)
-    : kBufferSize(1024), log_level_(log_level) {}
+    : log_level_(log_level) {}
 
   template <size_t N, typename ... Args>
   void operator()(LogLevel log_level, const char (&message)[N], Args ... args)
@@ -25,8 +25,8 @@ public:
       return;
     }
 
-    char buffer[kBufferSize];
-    snprintf(buffer, kBufferSize, message, args...);
+    char buffer[1024];
+    snprintf(buffer, 1024, message, args...);
 
     std::cerr << buffer << "\n";
   }
@@ -42,6 +42,5 @@ public:
   }
 
 private:
-  const size_t kBufferSize;
   LogLevel log_level_;
 };

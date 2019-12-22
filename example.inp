@@ -1,4 +1,6 @@
-var variable:Int = 00123;
+1 + 2 * 3 * (4 + 5) + 6;
+
+/*var variable:Int = 00123;
 var str1 = "String";
 var escaped_string = "This \"escaped_string\" contains \\";
 var float = 123.;
@@ -6,4 +8,4 @@ var float = .123;
 var float = 123e1;
 var float = 123e+12;
 var float = 123.e-2;
-var float = 123e;
+var float = 123e;*/

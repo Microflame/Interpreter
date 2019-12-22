@@ -12,7 +12,7 @@ public:
   void Visit(const parser::Binary& expr) override
   {
     std::stringstream ss;
-    ss << "(" << expr.op_->ToString() << " ";
+    ss << "(" << expr.op_->ToRawString() << " ";
     ss << GetValue(*expr.left_) << " " << GetValue(*expr.right_) << ")";
     Return(ss.str());
   }
@@ -26,13 +26,13 @@ public:
 
   void Visit(const parser::Literal& expr) override
   {
-    Return(expr.val_->ToString());
+    Return(expr.val_->ToRawString());
   }
 
   void Visit(const parser::Unary& expr) override
   {
     std::stringstream ss;
-    ss << "(" << expr.op_->ToString() << " " << GetValue(*expr.right_) << ")";
+    ss << "(" << expr.op_->ToRawString() << " " << GetValue(*expr.right_) << ")";
     Return(ss.str());
   }
 };

@@ -142,6 +142,11 @@ public:
 
   Token() : Token(EMPTY_TOKEN, nullptr, 0) {}
 
+  std::string ToRawString() const
+  {
+    return std::string(begin_, begin_ + size_);
+  }
+
   std::string ToString() const
   {
     std::stringstream ss;
@@ -179,6 +184,17 @@ public:
   size_t Length() const { return size_; }
 
   Type GetType() const { return type_; }
+
+  template <typename ... Args>
+  bool OneOf(Type first, Args ... other) const
+  {
+    return (type_ == first) || OneOf(other...);
+  }
+
+  bool OneOf(Type first) const
+  {
+    return type_ == first;
+  }
 
   // Position GetPosition(const char* begin)
   // {
