@@ -6,10 +6,10 @@
 #include "parser/expr.h"
 #include "util/visitor_getter.h"
 
-class AstPrinter: public VisitorGetter<AstPrinter, Expr, std::string>, public IVisitor
+class AstPrinter: public util::VisitorGetter<AstPrinter, parser::Expr, std::string>, public parser::IVisitor
 {
 public:
-  void Visit(const Binary& expr) override
+  void Visit(const parser::Binary& expr) override
   {
     std::stringstream ss;
     ss << "(" << expr.op_->ToString() << " ";
@@ -17,19 +17,19 @@ public:
     Return(ss.str());
   }
 
-  void Visit(const Grouping& expr) override
+  void Visit(const parser::Grouping& expr) override
   {
     std::stringstream ss;
     ss << "(" << GetValue(*expr.expr_) << ")";
     Return(ss.str());
   }
 
-  void Visit(const Literal& expr) override
+  void Visit(const parser::Literal& expr) override
   {
     Return(expr.val_->ToString());
   }
 
-  void Visit(const Unary& expr) override
+  void Visit(const parser::Unary& expr) override
   {
     std::stringstream ss;
     ss << "(" << expr.op_->ToString() << " " << GetValue(*expr.right_) << ")";

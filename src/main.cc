@@ -13,8 +13,8 @@ int ReadFile(const char* path)
   {
     std::cerr << "Can not open " << path << "\n";
   }
-  Scanner scan(fin);
-  std::vector<Token> tokens = scan.GetTokens();
+  scanner::Scanner scan(fin);
+  std::vector<scanner::Token> tokens = scan.GetTokens();
   for (const auto& t: tokens)
   {
     std::cout << t.ToString() << "\n";
@@ -28,8 +28,12 @@ int RunPrompt()
 
 void TestAst()
 {
-  auto unary = std::make_shared<Unary>(std::make_shared<Token>(Token::MINUS, "-", 1),
-                                       std::make_shared<Literal>(std::make_shared<Token>(Token::INT_LITERAL, "123", 3)));
+  auto unary = std::make_shared<parser::Unary>(
+                 std::make_shared<scanner::Token>(scanner::Token::MINUS, "-", 1),
+                 std::make_shared<parser::Literal>(
+                   std::make_shared<scanner::Token>(scanner::Token::INT_LITERAL, "123", 3)
+                 )
+               );
 
   std::cout << AstPrinter::GetValue(*unary) << "\n";
 }

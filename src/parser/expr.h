@@ -4,6 +4,9 @@
 
 #include "scanner/scanner.h"
 
+namespace parser
+{
+
 template <typename T>
 using Ptr = std::shared_ptr<T>;
 
@@ -35,14 +38,14 @@ public:
 class Binary: public Expr
 {
 public:
-  Binary(Ptr<Expr> left, Ptr<Token> op, Ptr<Expr> right)
+  Binary(Ptr<Expr> left, Ptr<scanner::Token> op, Ptr<Expr> right)
     : left_(left), op_(op), right_(right)
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
 
   Ptr<Expr> left_;
-  Ptr<Token> op_;
+  Ptr<scanner::Token> op_;
   Ptr<Expr> right_;
 };
 
@@ -61,24 +64,26 @@ public:
 class Literal: public Expr
 {
 public:
-  Literal(Ptr<Token> val)
+  Literal(Ptr<scanner::Token> val)
     : val_(val)
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
 
-  Ptr<Token> val_;
+  Ptr<scanner::Token> val_;
 };
 
 class Unary: public Expr
 {
 public:
-  Unary(Ptr<Token> op, Ptr<Expr> right)
+  Unary(Ptr<scanner::Token> op, Ptr<Expr> right)
     : op_(op), right_(right)
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
 
-  Ptr<Token> op_;
+  Ptr<scanner::Token> op_;
   Ptr<Expr> right_;
 };
+
+} // parser

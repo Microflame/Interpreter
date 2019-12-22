@@ -5,115 +5,11 @@
 #include <streambuf>
 #include <vector>
 
+#include "token.h"
 #include "logger.h"
 
-#define INTERP_FORALL_TOKEN_TYPES(_) \
-  /* Single-character tokens. */ \
-  _(LEFT_PAREN) \
-  _(RIGHT_PAREN) \
-  _(LEFT_BRACE) \
-  _(RIGHT_BRACE) \
-  _(COMMA) \
-  _(DOT) \
-  _(MINUS) \
-  _(PLUS) \
-  _(COLON) \
-  _(SEMICOLON) \
-  _(SLASH) \
-  _(STAR) \
-  /* One or two character tokens. */ \
-  _(BANG) \
-  _(BANG_EQUAL) \
-  _(EQUAL) \
-  _(EQUAL_EQUAL) \
-  _(GREATER) \
-  _(GREATER_EQUAL) \
-  _(LESS) \
-  _(LESS_EQUAL) \
-  /* Literals. */ \
-  _(IDENTIFIER) \
-  _(STRING) \
-  _(INT_LITERAL) \
-  _(FLOAT_LITERAL) \
-  /* Types. */ \
-  _(INT_TYPE) \
-  _(FLOAT_TYPE) \
-  /* Keywords. */ \
-  _(AND) \
-  _(CLASS) \
-  _(ELSE) \
-  _(FALSE) \
-  _(FUNC) \
-  _(FOR) \
-  _(IF) \
-  _(NONE) \
-  _(OR) \
-  _(PRINT) \
-  _(RETURN) \
-  _(SUPER) \
-  _(THIS) \
-  _(TRUE) \
-  _(VAR) \
-  _(WHILE) \
-  _(END_OF_FILE) \
-  /* Non lang. */ \
-  _(EMPTY_TOKEN) \
-  _(COMMENT) \
-  _(BAD_TOKEN)
-
-
-class Token
+namespace scanner
 {
-public:
-  struct Position
-  {
-    int line;
-    int column;
-  };
-
-  enum Type
-  {
-#define INTERP_PUT_WITH_COMMA(_) _,
-    INTERP_FORALL_TOKEN_TYPES(INTERP_PUT_WITH_COMMA)
-#undef INTERP_PUT_WITH_COMMA
-  };
-
-  Token(Type type, const char* begin, size_t size)
-    : type_(type), begin_(begin), size_(size)
-  {}
-
-  Token() : Token(EMPTY_TOKEN, nullptr, 0) {}
-
-  std::string ToString() const
-  {
-    std::stringstream ss;
-
-#define INTERP_PUT_TOKEN_NAME(_) \
-    if (_ == type_) \
-    { \
-      ss << #_; \
-    }
-    INTERP_FORALL_TOKEN_TYPES(INTERP_PUT_TOKEN_NAME)
-#undef INTERP_PUT_TOKEN_NAME
-
-    ss << "(\"" << std::string(begin_, begin_ + size_) << "\")";
-    return ss.str();
-  }
-
-  size_t Length() const { return size_; }
-
-  Type GetType() const { return type_; }
-
-  // Position GetPosition(const char* begin)
-  // {
-
-  // }
-
-private:
-  Type type_;
-  const char* begin_;
-  size_t size_;
-};
 
 class Scanner
 {
@@ -152,6 +48,13 @@ public:
     return result;
   }
 
+private:
+  const std::string kFileStr;
+  std::string::const_iterator cur_;
+  Token cur_token_;
+
+  Logger log;
+
   Token GetNextToken()
   {
     if (cur_ == kFileStr.end())
@@ -181,9 +84,7 @@ public:
 
     TryGetIntToken();
     TryGetFloatToken();
-
     TryGetIdentifierToken();
-
     TryGetStringToken();
 
     if (cur_token_.Length())
@@ -251,6 +152,14 @@ public:
     }
   }
 
+  void UpdateCurrentToken(Token tok)
+  {
+    if (tok.Length() > cur_token_.Length())
+    {
+      cur_token_ = tok;
+    }
+  }
+
   void TryGetKeywordToken(const std::string& target, Token::Type type)
   {
     size_t token_len = target.size();
@@ -265,7 +174,14 @@ public:
     size_t i = 0;
     while (IsDigit(cur_[i])) { ++i; }
 
-    UpdateCurrentToken(Token::INT_LITERAL, i);
+    if (!i)
+    {
+      return;
+    }
+
+    int64_t value = std::stoll(std::string(cur_, cur_ + i));
+    Token tok(Token::INT_LITERAL, &*cur_, i, value);
+    UpdateCurrentToken(tok);
   }
 
   void TryGetFloatToken()
@@ -308,7 +224,9 @@ public:
     {
       if (has_dot)
       {
-        UpdateCurrentToken(Token::FLOAT_LITERAL, i);
+        double value = std::stod(std::string(cur_, cur_ + i));
+        Token tok(Token::FLOAT_LITERAL, &*cur_, i, value);
+        UpdateCurrentToken(tok);
       }
       return;
     }
@@ -323,7 +241,9 @@ public:
 
     if (!IsDigit(cur_[i]))
     {
-      UpdateCurrentToken(Token::FLOAT_LITERAL, mantissa);
+      double value = std::stod(std::string(cur_, cur_ + mantissa));
+      Token tok(Token::FLOAT_LITERAL, &*cur_, mantissa, value);
+      UpdateCurrentToken(tok);
       return;
     }
 
@@ -331,7 +251,9 @@ public:
     {
       ++i;
     }
-    UpdateCurrentToken(Token::FLOAT_LITERAL, i);
+    double value = std::stod(std::string(cur_, cur_ + i));
+    Token tok(Token::FLOAT_LITERAL, &*cur_, i, value);
+    UpdateCurrentToken(tok);
   }
 
   void TryGetIdentifierToken()
@@ -345,12 +267,17 @@ public:
 
     while (IsAlphanum(cur_[i])) { ++i; }
 
-    UpdateCurrentToken(Token::IDENTIFIER, i);
+
+    std::string value(cur_, cur_ + i);
+    Token tok(Token::IDENTIFIER, &*cur_, i, value);
+    UpdateCurrentToken(tok);
   }
 
   void TryGetStringToken()
   {
     if (*cur_ != '"') return;
+
+    std::string result;
 
     bool escape = false;
     for (size_t i = 1; i < Remaining(); ++i)
@@ -358,6 +285,27 @@ public:
       if (escape)
       {
         escape = false;
+        switch (cur_[i])
+        {
+          case 'n':
+            result += '\n';
+            break;
+          case 't':
+            result += '\t';
+            break;
+          case '\\':
+            result += '\\';
+            break;
+          case '\"':
+            result += '\"';
+            break;
+          case '\'':
+            result += '\'';
+            break;
+          default:
+            result += '\\';
+            result += cur_[i];
+        }
         continue;
       }
       if (cur_[i] == '\\')
@@ -367,7 +315,9 @@ public:
       }
       if (cur_[i] == '"')
       {
-        UpdateCurrentToken(Token::STRING, i + 1);
+        std::cout << result << std::endl;
+        Token tok(Token::STRING, &*cur_, i + 1, result);
+        UpdateCurrentToken(tok);
         return;
       }
       if (cur_[i] == '\n')
@@ -375,6 +325,7 @@ public:
         UpdateCurrentToken(Token::BAD_TOKEN, i);
         return;
       }
+      result += cur_[i];
     }
     UpdateCurrentToken(Token::BAD_TOKEN, Remaining());
   }
@@ -413,13 +364,6 @@ public:
     return kFileStr.end() - cur_;
   }
 
-private:
-  const std::string kFileStr;
-  std::string::const_iterator cur_;
-  Token cur_token_;
-
-  Logger log;
-
   bool IsInRange(char chr, char lo, char hi)
   {
     return (chr >= lo) && (chr <= hi);
@@ -440,3 +384,5 @@ private:
     return IsAlpha(chr) || IsDigit(chr);
   }
 };
+
+} // scanner

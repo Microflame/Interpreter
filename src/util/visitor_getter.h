@@ -1,5 +1,8 @@
 #pragma once
 
+namespace util
+{
+
 template <typename VisitorType, typename VisitableType, typename ReturnType>
 class VisitorGetter
 {
@@ -19,3 +22,5 @@ public:
 private:
   ReturnType val_;
 };
+
+} // util
