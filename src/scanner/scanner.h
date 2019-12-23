@@ -2,11 +2,11 @@
 
 #include <istream>
 #include <sstream>
-#include <streambuf>
 #include <vector>
 
 #include "token.h"
 #include "logger.h"
+#include "util/string_tools.h"
 
 namespace scanner
 {
@@ -14,20 +14,21 @@ namespace scanner
 class Scanner
 {
 public:
-  Scanner(std::istream& is)
-    : kFileStr(std::istreambuf_iterator<char>(is), std::istreambuf_iterator<char>()),
-      cur_(kFileStr.begin()),
-      log(Logger::kDebug)
+  Scanner(const std::string& source)
+    : kSource(source),
+      cur_(kSource.begin()),
+      log_(Logger::kDebug),
+      error_(false)
   {
     
   }
 
   std::vector<Token> GetTokens()
   {
-    log(Logger::kDebug, "Scanner started.");
+    log_(Logger::kDebug, "Scanner started.");
 
     std::vector<Token> result;
-    cur_ = kFileStr.begin();
+    cur_ = kSource.begin();
 
     while (true)
     {
@@ -43,21 +44,27 @@ public:
       }
     }
 
-    log(Logger::kDebug, "Scanner finished with %d non empty tokens.", result.size());
+    log_(Logger::kDebug, "Scanner finished with %d non empty tokens.", result.size());
 
     return result;
   }
 
+  bool HasError() { return error_; }
+
 private:
-  const std::string kFileStr;
+  const std::string& kSource;
+
   std::string::const_iterator cur_;
+
   Token cur_token_;
 
-  Logger log;
+  Logger log_;
+
+  bool error_;
 
   Token GetNextToken()
   {
-    if (cur_ == kFileStr.end())
+    if (cur_ == kSource.end())
     {
       return ExtractToken(Token::END_OF_FILE, 0);
     }
@@ -125,14 +132,14 @@ private:
       case '/':
         if (MatchChar(1, '/'))
         {
-          size_t terminator_pos = kFileStr.find('\n', GetOffset() + 2);
-          size_t end_pos = terminator_pos != std::string::npos ? terminator_pos + 1 : kFileStr.size();
+          size_t terminator_pos = kSource.find('\n', GetOffset() + 2);
+          size_t end_pos = terminator_pos != std::string::npos ? terminator_pos + 1 : kSource.size();
           return ExtractToken(Token::COMMENT, end_pos - GetOffset());
         }
         else if (MatchChar(1, '*'))
         {
-          size_t terminator_pos = kFileStr.find("*/", GetOffset() + 2);
-          size_t end_pos = terminator_pos != std::string::npos ? terminator_pos + 2 : kFileStr.size();
+          size_t terminator_pos = kSource.find("*/", GetOffset() + 2);
+          size_t end_pos = terminator_pos != std::string::npos ? terminator_pos + 2 : kSource.size();
           return ExtractToken(Token::COMMENT, end_pos - GetOffset());
         }
         else
@@ -140,6 +147,8 @@ private:
           return ExtractToken(Token::SLASH, 1);
         }
       default:
+        auto pos = util::string_tools::GetPosition(kSource, GetOffset());
+        ReportError("[SCANNER]:%d:%d: bad token.", pos.first, pos.second);
         return ExtractToken(Token::BAD_TOKEN, 1);
     }
   }
@@ -152,7 +161,7 @@ private:
     }
   }
 
-  void UpdateCurrentToken(Token tok)
+  void UpdateCurrentToken(const Token& tok)
   {
     if (tok.Length() > cur_token_.Length())
     {
@@ -322,23 +331,27 @@ private:
       }
       if (cur_[i] == '\n')
       {
+        auto pos = util::string_tools::GetPosition(kSource, GetOffset());
+        ReportError("[SCANNER]:%d:%d: unexpected end of line inside of string.", pos.first, pos.second);
         UpdateCurrentToken(Token::BAD_TOKEN, i);
         return;
       }
       result += cur_[i];
     }
+    auto pos = util::string_tools::GetPosition(kSource, GetOffset());
+    ReportError("[SCANNER]:%d:%d: invalid symbol.", pos.first, pos.second);
     UpdateCurrentToken(Token::BAD_TOKEN, Remaining());
   }
 
   bool MatchStr(const std::string& target)
   {
-    return (target.size() <= Remaining()) && (kFileStr.compare(GetOffset(), target.size(), target) == 0);
+    return (target.size() <= Remaining()) && (kSource.compare(GetOffset(), target.size(), target) == 0);
   }
 
   bool MatchChar(size_t offset, char chr)
   {
     std::string::const_iterator target = cur_ + offset;
-    return (target < kFileStr.end()) && (*target == chr);
+    return (target < kSource.end()) && (*target == chr);
   }
 
   Token ExtractToken(Token::Type type, size_t size)
@@ -356,12 +369,12 @@ private:
 
   size_t GetOffset()
   {
-    return cur_ - kFileStr.begin();
+    return cur_ - kSource.begin();
   }
 
   size_t Remaining()
   {
-    return kFileStr.end() - cur_;
+    return kSource.end() - cur_;
   }
 
   bool IsInRange(char chr, char lo, char hi)
@@ -382,6 +395,19 @@ private:
   bool IsAlphanum(char chr)
   {
     return IsAlpha(chr) || IsDigit(chr);
+  }
+
+  template <size_t N, typename ... Args>
+  void ReportError(const char (&message)[N], Args ... args)
+  {
+    error_ = true;
+    log_(Logger::kError, message, args...);
+  }
+
+  void ReportError(const char* message)
+  {
+    error_ = true;
+    log_(Logger::kError, message);
   }
 };
 

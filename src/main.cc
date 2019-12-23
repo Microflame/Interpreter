@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <streambuf>
 
 
 #include "scanner/scanner.h"
@@ -15,11 +16,23 @@ int ReadFile(const char* path)
     std::cerr << "Can not open " << path << "\n";
   }
 
-  scanner::Scanner scanner(fin);
+  std::string source((std::istreambuf_iterator<char>(fin)), std::istreambuf_iterator<char>());
+
+  scanner::Scanner scanner(source);
   std::vector<scanner::Token> tokens = scanner.GetTokens();
 
-  parser::Parser parser(tokens);
+  if (scanner.HasError())
+  {
+    return 1;
+  }
+
+  parser::Parser parser(source, tokens);
   std::shared_ptr<parser::Expr> expr = parser.Parse();
+
+  if (parser.HasError())
+  {
+    return 1;
+  }
 
   std::cout << AstPrinter::GetValue(*expr) << "\n";
   return 0;

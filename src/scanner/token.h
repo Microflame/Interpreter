@@ -4,6 +4,8 @@
 #include <string>
 #include <sstream>
 
+#include "util/string_tools.h"
+
 
 #define INTERP_FORALL_TOKEN_TYPES(_) \
   /* Single-character tokens. */ \
@@ -196,10 +198,10 @@ public:
     return type_ == first;
   }
 
-  // Position GetPosition(const char* begin)
-  // {
-
-  // }
+  std::pair<size_t, size_t> GetPosition(const std::string& source) const
+  {
+    return util::string_tools::GetPosition(source, begin_ - source.c_str());
+  }
 
 private:
   std::shared_ptr<AbstractHolder> holder_;

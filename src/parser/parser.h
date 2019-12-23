@@ -5,6 +5,7 @@
 #include "scanner/token.h"
 #include "logger.h"
 #include "expr.h"
+#include "util/string_tools.h"
 
 namespace parser
 {
@@ -12,8 +13,8 @@ namespace parser
 class Parser
 {
 public:
-  Parser(const std::vector<scanner::Token>& tokens)
-    : kTokens(tokens), log_(Logger::kDebug)
+  Parser(const std::string& source, const std::vector<scanner::Token>& tokens)
+    : kSource(source), kTokens(tokens), log_(Logger::kDebug), error_(false)
   {}
 
 
@@ -23,11 +24,43 @@ public:
     return ParseExpr();
   }
 
+  bool HasError() { return error_; }
+
 private:
+  const std::string& kSource;
   const std::vector<scanner::Token>& kTokens;
   size_t cur_;
   Logger log_;
+  bool error_;
 
+  size_t Remaining()
+  {
+    return kTokens.size() - cur_;
+  }
+
+  bool Synchronize()
+  {
+    while (Remaining())
+    {
+      if (GetCurrentToken().GetType() == scanner::Token::SEMICOLON)
+      {
+        ++cur_;
+        return true;
+      }
+      if (GetCurrentToken().OneOf(scanner::Token::CLASS,
+                                  scanner::Token::FUNC,
+                                  scanner::Token::VAR,
+                                  scanner::Token::FOR,
+                                  scanner::Token::IF,
+                                  scanner::Token::WHILE,
+                                  scanner::Token::RETURN))
+      {
+        return true;
+      }
+      ++cur_;
+    }
+    return false;
+  }
 
   const scanner::Token& GetCurrentToken() const { return kTokens[cur_]; }
 
@@ -35,7 +68,14 @@ private:
 
   Ptr<Expr> ParseExpr()
   {
-    return ParseEquality();
+    try
+    {
+      return ParseEquality();
+    }
+    catch (std::runtime_error& e)
+    {
+      return {};
+    }
   }
 
   Ptr<Expr> ParseEquality()
@@ -59,7 +99,7 @@ private:
     while (GetCurrentToken().OneOf(scanner::Token::LESS,
                                    scanner::Token::LESS_EQUAL,
                                    scanner::Token::GREATER,
-                                   scanner::Token::GREATER))
+                                   scanner::Token::GREATER_EQUAL))
     {
       const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
       Ptr<Expr> right = ParseAddition();
@@ -122,23 +162,27 @@ private:
       return std::make_shared<Literal>(std::make_shared<scanner::Token>(op));
     }
 
-    if (GetCurrentToken().GetType() == scanner::Token::LEFT_PAREN)
-    {
-      ++cur_;
-      Ptr<Expr> expr = ParseExpr();
-      if (GetCurrentToken().GetType() != scanner::Token::RIGHT_PAREN)
-      {
-        log_(Logger::kError, "Expected \')\' before %s", GetCurrentToken().ToRawString().c_str());
-      }
-      ++cur_;
-      return std::make_shared<Grouping>(expr);
-    }
-
-    log_(Logger::kError, "\'(\' or literal expected.");
-    throw std::runtime_error("\'(\' or literal expected.");
+    ExpectToken(scanner::Token::LEFT_PAREN, "expression");
+    Ptr<Expr> expr = ParseExpr();
+    ExpectToken(scanner::Token::RIGHT_PAREN, ")");
+    return std::make_shared<Grouping>(expr);
   }
 
-
+  void ExpectToken(scanner::Token::Type type, const char* name)
+  {
+    if (GetCurrentToken().GetType() != type)
+    {
+      error_ = true;
+      auto pos = GetCurrentToken().GetPosition(kSource);
+      log_(Logger::kError, "[PARSER]:%d:%d: Expected \'%s\' before %s",
+           pos.first,
+           pos.second,
+           name,
+           GetCurrentToken().ToRawString().c_str());
+      throw std::runtime_error("Unexpected token.");
+    }
+    ++cur_;
+  }
 };
 
 } // parser
