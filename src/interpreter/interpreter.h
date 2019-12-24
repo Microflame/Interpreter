@@ -1,9 +1,10 @@
 #pragma once
 
-#include "parser/expr.h"
 #include "scanner/token.h"
-#include "util/visitor_getter.h"
+#include "parser/expr.h"
 #include "common/object.h"
+#include "util/visitor_getter.h"
+#include "interpret_error.h"
 
 namespace interpreter
 {
@@ -39,7 +40,7 @@ public:
             Return(common::MakeFloat(-obj.AsFloat()));
             return;
           default:
-            throw std::runtime_error("scanner::Token::MINUS Bad arg_0 type.");
+            throw InterpretError(*expr.op_, "Int or Float expected before " + expr.op_->ToString());
         }
       }
       case (scanner::Token::BANG):
@@ -79,7 +80,7 @@ public:
           Return(common::MakeString(left.AsString() + right.AsString()));
           return;
         }
-        ThrowBadBinary(left, *expr.op_, right);
+        throw InterpretError(*expr.op_, left.GetTypeName() + " and " + right.GetTypeName() + " are not valid for +.");
       }
     }
 
@@ -99,7 +100,14 @@ public:
     if (!expr.op_->OneOf(arithmetic_op_types) &&
         !expr.op_->OneOf(comparison_op_types))
     {
-      ThrowBadBinary(left, *expr.op_, right);
+      throw InterpretError(*expr.op_, "Expected arithmetic or comparison operator.");
+    }
+
+    if (!left.IsNumber() || !right.IsNumber())
+    {
+      throw InterpretError(*expr.op_, left.GetTypeName() + " and " +
+                           right.GetTypeName() + " are not valid for " +
+                           expr.op_->ToRawString());
     }
 
     if (left.GetType() == common::Object::FLOAT || right.GetType() == common::Object::FLOAT)
@@ -152,11 +160,6 @@ private:
       default:
         return true;
     }
-  }
-
-  void ThrowBadBinary(const common::Object& l, const scanner::Token& op, const common::Object& r)
-  {
-    throw std::runtime_error("Bad binary op" + l.ToString() + " " + op.ToString() + " " + r.ToString());
   }
 
   template <typename T, typename U = T>
@@ -214,7 +217,7 @@ private:
     {
       return obj.AsFloat();
     }
-    throw std::runtime_error("Bad argument type");
+    throw std::logic_error("Not a number");
   }
 };
 

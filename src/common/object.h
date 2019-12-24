@@ -62,6 +62,11 @@ public:
     return held_->As<bool>();
   }
 
+  std::string GetTypeName()
+  {
+    return GetTypeName(type_);
+  }
+
   static std::string GetTypeName(Type type)
   {
     switch (type)
@@ -113,6 +118,11 @@ public:
         throw std::logic_error("Objext::IsEqual() Bad type");
     }
     
+  }
+
+  bool IsNumber() const
+  {
+    return (type_ == INT) || (type_ == FLOAT);
   }
 
 private:
