@@ -7,7 +7,7 @@ template <typename VisitorType, typename VisitableType, typename ReturnType>
 class VisitorGetter
 {
 public:
-  static ReturnType GetValue(VisitableType& visitable)
+  static ReturnType GetValue(const VisitableType& visitable)
   {
     VisitorType vis;
     visitable.Accept(vis);

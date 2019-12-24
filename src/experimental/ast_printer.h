@@ -26,7 +26,7 @@ public:
 
   void Visit(const parser::Literal& expr) override
   {
-    Return(expr.val_->ToRawString());
+    Return(expr.val_.ToString());
   }
 
   void Visit(const parser::Unary& expr) override

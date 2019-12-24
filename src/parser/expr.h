@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "scanner/scanner.h"
+#include "common/object.h"
 
 namespace parser
 {
@@ -64,13 +65,13 @@ public:
 class Literal: public Expr
 {
 public:
-  Literal(Ptr<scanner::Token> val)
-    : val_(val)
+  Literal(Ptr<scanner::Token> tok)
+    : val_(tok->GetObject())
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
 
-  Ptr<scanner::Token> val_;
+  common::Object val_;
 };
 
 class Unary: public Expr

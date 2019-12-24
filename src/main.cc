@@ -7,6 +7,7 @@
 #include "parser/expr.h"
 #include "parser/parser.h"
 #include "experimental/ast_printer.h"
+#include "interpreter/interpreter.h"
 
 int ReadFile(const char* path)
 {
@@ -35,6 +36,12 @@ int ReadFile(const char* path)
   }
 
   std::cout << AstPrinter::GetValue(*expr) << "\n";
+
+  common::Object obj = interpreter::Interpreter::GetValue(*expr);
+
+  std::cout << "=\n";
+
+  std::cout << obj.ToString() << "\n";
   return 0;
 }
 
@@ -52,6 +59,7 @@ int main(int argc, const char* argv[])
   }
   else
   {
+    retval = ReadFile("./example.inp");
     retval = RunPrompt();
   }
   return retval;

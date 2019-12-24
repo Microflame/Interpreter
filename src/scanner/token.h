@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "util/string_tools.h"
+#include "common/object.h"
 
 
 #define INTERP_FORALL_TOKEN_TYPES(_) \
@@ -67,43 +68,6 @@ namespace scanner
 class Token
 {
 public:
-  class AbstractHolder
-  {
-  public:
-    template <typename T>
-    T& GetValue()
-    {
-      Holder<T>* ptr = dynamic_cast<Holder<T>*>(this);
-      if (ptr == nullptr)
-      {
-        throw std::logic_error("Bad token cast");
-      }
-      return ptr->GetValue();
-    }
-
-    virtual ~AbstractHolder() {}
-  };
-
-  struct NoValue {};
-
-  template <typename T>
-  class Holder: public AbstractHolder
-  {
-  public:
-    Holder(T held) : held_(held) {}
-
-    T& GetValue() { return held_; }
-
-  private:
-    T held_;
-  };
-
-  struct Position
-  {
-    int line;
-    int column;
-  };
-
   enum Type
   {
 #define INTERP_PUT_WITH_COMMA(_) _,
@@ -112,21 +76,21 @@ public:
   };
 
   explicit Token(Type type, const char* begin, size_t size, int64_t content)
-    : holder_(std::make_shared<Holder<uint64_t>>(content)),
+    : object_(common::MakeInt(content)),
       type_(type),
       begin_(begin),
       size_(size)
   {}
 
   explicit Token(Type type, const char* begin, size_t size, double content)
-    : holder_(std::make_shared<Holder<double>>(content)),
+    : object_(common::MakeFloat(content)),
       type_(type),
       begin_(begin),
       size_(size)
   {}
 
   explicit Token(Type type, const char* begin, size_t size, std::string content)
-    : holder_(std::make_shared<Holder<std::string>>(content)),
+    : object_(common::MakeString(content)),
       type_(type),
       begin_(begin),
       size_(size)
@@ -136,7 +100,7 @@ public:
   Token(Type type, const char* begin, size_t size, T content) = delete;
 
   Token(Type type, const char* begin, size_t size)
-    : holder_(std::make_shared<Holder<NoValue>>(NoValue())),
+    : object_(common::MakeNone()),
       type_(type),
       begin_(begin),
       size_(size)
@@ -166,14 +130,14 @@ public:
     switch (type_)
     {
       case INT_LITERAL:
-        ss << std::to_string(holder_->GetValue<uint64_t>());
+        ss << std::to_string(object_.AsInt());
         break;
       case FLOAT_LITERAL:
-        ss << std::to_string(holder_->GetValue<double>());
+        ss << std::to_string(object_.AsFloat());
         break;
       case IDENTIFIER:
       case STRING:
-        ss  << holder_->GetValue<std::string>();
+        ss  << object_.AsString();
         break;
       default:
         ss << std::string(begin_, begin_ + size_);
@@ -186,6 +150,18 @@ public:
   size_t Length() const { return size_; }
 
   Type GetType() const { return type_; }
+
+  bool OneOf(const std::vector<Type>& types)
+  {
+    for (Type t: types)
+    {
+      if (type_ == t)
+      {
+        return true;
+      }
+    }
+    return false;
+  }
 
   template <typename ... Args>
   bool OneOf(Type first, Args ... other) const
@@ -203,8 +179,18 @@ public:
     return util::string_tools::GetPosition(source, begin_ - source.c_str());
   }
 
+  common::Object& GetObject()
+  {
+    return object_;
+  }
+
+  const common::Object& GetObject() const
+  {
+    return object_;
+  }
+
 private:
-  std::shared_ptr<AbstractHolder> holder_;
+  common::Object object_;
   Type type_;
   const char* begin_;
   size_t size_;
