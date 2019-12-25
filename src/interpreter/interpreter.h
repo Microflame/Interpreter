@@ -5,13 +5,59 @@
 #include "common/object.h"
 #include "util/visitor_getter.h"
 #include "interpret_error.h"
+#include "environment.h"
 
 namespace interpreter
 {
 
-class Interpreter: public util::VisitorGetter<Interpreter, parser::Expr, common::Object>, public parser::IVisitor
+class Interpreter: public util::VisitorGetter<Interpreter, parser::Expr, common::Object>,
+                   public parser::IVisitor,
+                   public parser::stmt::IStmtVisitor
 {
 public:
+  void Interpret(const std::vector<std::shared_ptr<parser::stmt::Stmt>>& statements)
+  {
+    try
+    {
+      for (const auto& stmt_ptr: statements)
+      {
+        Execute(*stmt_ptr);
+      }
+    }
+    catch (const InterpretError& e)
+    {
+      std::cerr << e.what() << '\n';
+    }
+    
+  }
+
+  void Execute(const parser::stmt::Stmt& stmt)
+  {
+    stmt.Accept(*this);
+  }
+
+  void Visit(const parser::stmt::Expression& stmt)
+  {
+    Evaluate(*stmt.expr_);
+  }
+
+  void Visit(const parser::stmt::Print& stmt)
+  {
+    common::Object obj = Evaluate(*stmt.expr_);
+    std::cout << obj.ToString() << "\n";
+  }
+
+  void Visit(const parser::stmt::Var& stmt)
+  {
+    common::Object init;
+    if (stmt.expr_)
+    {
+      init = Evaluate(*stmt.expr_);
+    }
+
+    environment.Define(stmt.name_->ToRawString(), init);
+  }
+
   void Visit(const parser::Literal& expr) override
   {
     common::Object obj = expr.val_;
@@ -142,11 +188,18 @@ public:
     }
   }
 
+  void Visit(const parser::Variable& expr) override
+  {
+    Return(environment.Get(expr.name_->ToRawString()));
+  }
+
 
 private:
+  Environment environment;
+
   common::Object Evaluate(const parser::Expr& expr)
   {
-    return Interpreter::GetValue(expr);
+    return GetValue(expr);
   }
 
   bool IsTruthy(const common::Object& obj)

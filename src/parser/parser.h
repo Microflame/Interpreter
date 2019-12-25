@@ -1,10 +1,11 @@
 #pragma once
 
-
+#include <vector>
 
 #include "scanner/token.h"
 #include "logger.h"
 #include "expr.h"
+#include "stmt.h"
 #include "util/string_tools.h"
 
 namespace parser
@@ -18,10 +19,17 @@ public:
   {}
 
 
-  Ptr<Expr> Parse()
+  std::vector<Ptr<stmt::Stmt>> Parse()
   {
     cur_ = 0;
-    return ParseExpr();
+    std::vector<Ptr<stmt::Stmt>> statements;
+
+    while (Remaining())
+    {
+      statements.push_back(ParseDeclarationOrStatement());
+    }
+
+    return statements;
   }
 
   bool HasError() { return error_; }
@@ -33,9 +41,79 @@ private:
   Logger log_;
   bool error_;
 
-  size_t Remaining()
+  Ptr<stmt::Stmt> ParseDeclarationOrStatement()
   {
-    return kTokens.size() - cur_;
+    try
+    {
+      if (GetCurrentToken().GetType() == scanner::Token::VAR)
+      {
+        ++cur_;
+        return ParseVarDeclaration();
+      }
+
+      return ParseStmt();
+    }
+    catch (const std::runtime_error& e)
+    {
+      Synchronize();
+      return nullptr;
+    }
+    if (GetCurrentToken().GetType() == scanner::Token::VAR)
+    {
+      ++cur_;
+      return ParsePrintStmt();
+    }
+
+    return ParseExpressionStmt();
+  }
+
+  Ptr<stmt::Stmt> ParseVarDeclaration()
+  {
+    ExpectToken(scanner::Token::IDENTIFIER, "identifier", false);
+    Ptr<scanner::Token> name = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
+
+    Ptr<Expr> expr = nullptr;
+    if (GetCurrentToken().GetType() == scanner::Token::EQUAL)
+    {
+      ++cur_;
+      expr = ParseExpr();
+    }
+
+    ExpectToken(scanner::Token::SEMICOLON, ";");
+
+    return std::make_shared<stmt::Var>(name, expr);
+  }
+
+  Ptr<stmt::Stmt> ParseStmt()
+  {
+    if (GetCurrentToken().GetType() == scanner::Token::PRINT)
+    {
+      ++cur_;
+      return ParsePrintStmt();
+    }
+
+    return ParseExpressionStmt();
+  }
+
+  Ptr<stmt::Stmt> ParsePrintStmt()
+  {
+    Ptr<Expr> expr = ParseExpr();
+
+    ExpectToken(scanner::Token::SEMICOLON, ";");
+    return std::make_shared<stmt::Print>(expr);
+  }
+
+  Ptr<stmt::Stmt> ParseExpressionStmt()
+  {
+    Ptr<Expr> expr = ParseExpr();
+
+    ExpectToken(scanner::Token::SEMICOLON, ";");
+    return std::make_shared<stmt::Expression>(expr);
+  }
+
+  bool Remaining()
+  {
+    return GetCurrentToken().GetType() != scanner::Token::END_OF_FILE;
   }
 
   bool Synchronize()
@@ -162,13 +240,19 @@ private:
       return std::make_shared<Literal>(std::make_shared<scanner::Token>(op));
     }
 
+    if (GetCurrentToken().GetType() == scanner::Token::IDENTIFIER)
+    {
+      const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
+      return std::make_shared<Variable>(std::make_shared<scanner::Token>(op));
+    }
+
     ExpectToken(scanner::Token::LEFT_PAREN, "expression");
     Ptr<Expr> expr = ParseExpr();
     ExpectToken(scanner::Token::RIGHT_PAREN, ")");
     return std::make_shared<Grouping>(expr);
   }
 
-  void ExpectToken(scanner::Token::Type type, const char* name)
+  void ExpectToken(scanner::Token::Type type, const char* name, bool incremet = true)
   {
     if (GetCurrentToken().GetType() != type)
     {
@@ -181,7 +265,7 @@ private:
            GetCurrentToken().ToRawString().c_str());
       throw std::runtime_error("Unexpected token.");
     }
-    ++cur_;
+    cur_ += incremet;
   }
 };
 

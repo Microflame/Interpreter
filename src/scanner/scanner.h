@@ -324,7 +324,6 @@ private:
       }
       if (cur_[i] == '"')
       {
-        std::cout << result << std::endl;
         Token tok(Token::STRING, &*cur_, i + 1, result);
         UpdateCurrentToken(tok);
         return;

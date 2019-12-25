@@ -5,8 +5,9 @@
 
 #include "scanner/scanner.h"
 #include "parser/expr.h"
+#include "parser/stmt.h"
 #include "parser/parser.h"
-#include "experimental/ast_printer.h"
+// #include "experimental/ast_printer.h"
 #include "interpreter/interpreter.h"
 
 int ReadFile(const char* path)
@@ -28,20 +29,19 @@ int ReadFile(const char* path)
   }
 
   parser::Parser parser(source, tokens);
-  std::shared_ptr<parser::Expr> expr = parser.Parse();
+  std::vector<std::shared_ptr<parser::stmt::Stmt>> statements = parser.Parse();
 
   if (parser.HasError())
   {
     return 1;
   }
 
-  std::cout << AstPrinter::GetValue(*expr) << "\n";
+  // std::cout << AstPrinter::GetValue(*expr) << "\n";
 
-  common::Object obj = interpreter::Interpreter::GetValue(*expr);
+  interpreter::Interpreter interpreter;
 
-  std::cout << "=\n";
+  interpreter.Interpret(statements);
 
-  std::cout << obj.ToString() << "\n";
   return 0;
 }
 

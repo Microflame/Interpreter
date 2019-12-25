@@ -15,6 +15,7 @@ class Binary;
 class Grouping;
 class Literal;
 class Unary;
+class Variable;
 
 class IVisitor
 {
@@ -23,6 +24,7 @@ public:
   virtual void Visit(const Grouping&) = 0;
   virtual void Visit(const Literal&) = 0;
   virtual void Visit(const Unary&) = 0;
+  virtual void Visit(const Variable&) = 0;
 
   virtual ~IVisitor() {}
 };
@@ -85,6 +87,18 @@ public:
 
   Ptr<scanner::Token> op_;
   Ptr<Expr> right_;
+};
+
+class Variable: public Expr
+{
+public:
+  Variable(Ptr<scanner::Token> name)
+    : name_(name)
+  {}
+
+  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
+
+  Ptr<scanner::Token> name_;
 };
 
 } // parser
