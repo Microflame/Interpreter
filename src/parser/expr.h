@@ -11,6 +11,7 @@ namespace parser
 template <typename T>
 using Ptr = std::shared_ptr<T>;
 
+class Assign;
 class Binary;
 class Grouping;
 class Literal;
@@ -20,6 +21,7 @@ class Variable;
 class IVisitor
 {
 public:
+  virtual void Visit(const Assign&) = 0;
   virtual void Visit(const Binary&) = 0;
   virtual void Visit(const Grouping&) = 0;
   virtual void Visit(const Literal&) = 0;
@@ -37,6 +39,20 @@ public:
   virtual ~Expr() {}
 };
 
+
+class Assign: public Expr
+{
+public:
+  Assign(Ptr<scanner::Token> name, Ptr<Expr> value)
+    : name_(name), value_(value)
+  {}
+
+  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
+
+  Ptr<Expr> left_;
+  Ptr<scanner::Token> name_;
+  Ptr<Expr> value_;
+};
 
 class Binary: public Expr
 {

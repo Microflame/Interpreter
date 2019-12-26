@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "expr.h"
 
 namespace parser
@@ -10,6 +12,7 @@ namespace stmt
 template <typename T>
 using Ptr = std::shared_ptr<T>;
 
+class Block;
 class Expression;
 class Print;
 class Var;
@@ -17,6 +20,7 @@ class Var;
 class IStmtVisitor
 {
 public:
+  virtual void Visit(const Block&) = 0;
   virtual void Visit(const Expression&) = 0;
   virtual void Visit(const Print&) = 0;
   virtual void Visit(const Var&) = 0;
@@ -30,6 +34,18 @@ public:
   virtual void Accept(IStmtVisitor& vis) const = 0;
 
   ~Stmt() {}
+};
+
+class Block: public Stmt
+{
+public:
+  Block(Ptr<std::vector<Ptr<Stmt>>> statements)
+  : statements_(statements)
+  {}
+
+  void Accept(IStmtVisitor& vis) const { vis.Visit(*this); }
+
+  Ptr<std::vector<Ptr<Stmt>>> statements_;
 };
 
 class Expression: public Stmt

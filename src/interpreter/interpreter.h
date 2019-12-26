@@ -36,6 +36,11 @@ public:
     stmt.Accept(*this);
   }
 
+  void Visit(const parser::stmt::Block& stmt)
+  {
+    ExecuteBlock(stmt);
+  }
+
   void Visit(const parser::stmt::Expression& stmt)
   {
     Evaluate(*stmt.expr_);
@@ -55,7 +60,14 @@ public:
       init = Evaluate(*stmt.expr_);
     }
 
-    environment.Define(stmt.name_->ToRawString(), init);
+    GetCurrentEnv().Define(stmt.name_->ToRawString(), init);
+  }
+
+  void Visit(const parser::Assign& expr) override
+  {
+    common::Object obj = Evaluate(*expr.value_);
+    GetCurrentEnv().Assign(expr.name_->ToRawString(), obj);
+    Return(obj);
   }
 
   void Visit(const parser::Literal& expr) override
@@ -190,12 +202,32 @@ public:
 
   void Visit(const parser::Variable& expr) override
   {
-    Return(environment.Get(expr.name_->ToRawString()));
+    Return(GetCurrentEnv().Get(expr.name_->ToRawString()));
   }
 
 
 private:
-  Environment environment;
+  EnvironmentStack environment_stack;
+
+  Environment& GetCurrentEnv()
+  {
+    return environment_stack.GetCurrent();
+  }
+
+  std::unique_ptr<EnvironmentStack::EnvironmentGuard> GetEnvGuard()
+  {
+    return environment_stack.GetGuard();
+  }
+
+  void ExecuteBlock(const parser::stmt::Block& stmt)
+  {
+    auto g = GetEnvGuard();
+
+    for (const auto& s: *stmt.statements_)
+    {
+      Execute(*s);
+    }
+  }
 
   common::Object Evaluate(const parser::Expr& expr)
   {

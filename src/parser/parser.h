@@ -91,8 +91,26 @@ private:
       ++cur_;
       return ParsePrintStmt();
     }
+    if (GetCurrentToken().GetType() == scanner::Token::LEFT_BRACE)
+    {
+      ++cur_;
+      return ParseBlockStmt();
+    }
 
     return ParseExpressionStmt();
+  }
+
+  Ptr<stmt::Stmt> ParseBlockStmt()
+  {
+    Ptr<std::vector<Ptr<stmt::Stmt>>> statements = std::make_shared<std::vector<Ptr<stmt::Stmt>>>();
+
+    while (GetCurrentToken().GetType() != scanner::Token::RIGHT_BRACE && Remaining())
+    {
+      statements->push_back(ParseDeclarationOrStatement());
+    }
+
+    ExpectToken(scanner::Token::RIGHT_BRACE, "}");
+    return std::make_shared<stmt::Block>(statements);
   }
 
   Ptr<stmt::Stmt> ParsePrintStmt()
@@ -148,12 +166,34 @@ private:
   {
     try
     {
-      return ParseEquality();
+      return ParseAssign();
     }
     catch (std::runtime_error& e)
     {
       return {};
     }
+  }
+
+  Ptr<Expr> ParseAssign()
+  {
+    Ptr<Expr> expr = ParseEquality();
+
+    if (GetCurrentToken().GetType() == scanner::Token::EQUAL)
+    {
+      Ptr<scanner::Token> tok = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
+      Ptr<Expr> value = ParseAssign();
+
+      Variable* var = dynamic_cast<Variable*>(expr.get());
+
+      if (var == nullptr)
+      {
+        throw std::runtime_error("Bad assignment target.");
+      }
+
+      expr = std::make_shared<Assign>(var->name_, value);
+    }
+
+    return expr;
   }
 
   Ptr<Expr> ParseEquality()
