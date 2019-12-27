@@ -86,10 +86,20 @@ private:
 
   Ptr<stmt::Stmt> ParseStmt()
   {
+    if (GetCurrentToken().GetType() == scanner::Token::IF)
+    {
+      ++cur_;
+      return ParseIfStmt();
+    }
     if (GetCurrentToken().GetType() == scanner::Token::PRINT)
     {
       ++cur_;
       return ParsePrintStmt();
+    }
+    if (GetCurrentToken().GetType() == scanner::Token::WHILE)
+    {
+      ++cur_;
+      return ParseWhileStmt();
     }
     if (GetCurrentToken().GetType() == scanner::Token::LEFT_BRACE)
     {
@@ -98,6 +108,34 @@ private:
     }
 
     return ParseExpressionStmt();
+  }
+
+  Ptr<stmt::Stmt> ParseWhileStmt()
+  {
+    ExpectToken(scanner::Token::LEFT_PAREN, "(");
+    Ptr<Expr> condition = ParseExpr();
+    ExpectToken(scanner::Token::RIGHT_PAREN, ")");
+
+    Ptr<stmt::Stmt> body = ParseStmt();
+
+    return std::make_shared<stmt::While>(condition, body);
+  }
+
+  Ptr<stmt::Stmt> ParseIfStmt()
+  {
+    ExpectToken(scanner::Token::LEFT_PAREN, "(");
+    Ptr<Expr> condition = ParseExpr();
+    ExpectToken(scanner::Token::RIGHT_PAREN, ")");
+
+    Ptr<stmt::Stmt> stmt_true = ParseStmt();
+    Ptr<stmt::Stmt> stmt_false = nullptr;
+    if (GetCurrentToken().GetType() == scanner::Token::ELSE)
+    {
+      ++cur_;
+      stmt_false = ParseStmt();
+    }
+
+    return std::make_shared<stmt::If>(condition, stmt_true, stmt_false);
   }
 
   Ptr<stmt::Stmt> ParseBlockStmt()
@@ -176,7 +214,7 @@ private:
 
   Ptr<Expr> ParseAssign()
   {
-    Ptr<Expr> expr = ParseEquality();
+    Ptr<Expr> expr = ParseOr();
 
     if (GetCurrentToken().GetType() == scanner::Token::EQUAL)
     {
@@ -191,6 +229,36 @@ private:
       }
 
       expr = std::make_shared<Assign>(var->name_, value);
+    }
+
+    return expr;
+  }
+
+  Ptr<Expr> ParseOr()
+  {
+    Ptr<Expr> expr = ParseAnd();
+
+    while (GetCurrentToken().GetType() == scanner::Token::OR)
+    {
+      Ptr<scanner::Token> tok = std::make_shared<scanner::Token>(GetCurrentToken());
+      ++cur_;
+      Ptr<Expr> right = ParseAnd();
+      expr = std::make_shared<Logical>(expr, tok, right);
+    }
+
+    return expr;
+  }
+
+  Ptr<Expr> ParseAnd()
+  {
+    Ptr<Expr> expr = ParseEquality();
+
+    while (GetCurrentToken().GetType() == scanner::Token::AND)
+    {
+      Ptr<scanner::Token> tok = std::make_shared<scanner::Token>(GetCurrentToken());
+      ++cur_;
+      Ptr<Expr> right = ParseEquality();
+      expr = std::make_shared<Logical>(expr, tok, right);
     }
 
     return expr;

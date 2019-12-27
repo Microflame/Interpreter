@@ -36,6 +36,19 @@ public:
     stmt.Accept(*this);
   }
 
+  void Visit(const parser::stmt::If& stmt)
+  {
+    common::Object obj = Evaluate(*stmt.condition_);
+    if (IsTruthy(obj))
+    {
+      Execute(*stmt.stmt_true_);
+    }
+    else if (stmt.stmt_false_)
+    {
+      Execute(*stmt.stmt_false_);
+    }
+  }
+
   void Visit(const parser::stmt::Block& stmt)
   {
     ExecuteBlock(stmt);
@@ -50,6 +63,14 @@ public:
   {
     common::Object obj = Evaluate(*stmt.expr_);
     std::cout << obj.ToString() << "\n";
+  }
+
+  void Visit(const parser::stmt::While& stmt)
+  {
+    while (IsTruthy(Evaluate(*stmt.condition_)))
+    {
+      Execute(*stmt.body_);
+    }
   }
 
   void Visit(const parser::stmt::Var& stmt)
@@ -108,6 +129,24 @@ public:
       }
       default:
         throw std::logic_error("Bad unary type.");
+    }
+  }
+
+  void Visit(const parser::Logical& expr) override
+  {
+    common::Object left = Evaluate(*expr.left_);
+
+    if (expr.op_->GetType() == scanner::Token::OR && IsTruthy(left))
+    {
+      Return(left);
+    }
+    else if (!IsTruthy(left))
+    {
+      Return(left);
+    }
+    else
+    {
+      Return(Evaluate(*expr.right_));
     }
   }
 

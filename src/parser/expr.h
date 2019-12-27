@@ -13,6 +13,7 @@ using Ptr = std::shared_ptr<T>;
 
 class Assign;
 class Binary;
+class Logical;
 class Grouping;
 class Literal;
 class Unary;
@@ -23,6 +24,7 @@ class IVisitor
 public:
   virtual void Visit(const Assign&) = 0;
   virtual void Visit(const Binary&) = 0;
+  virtual void Visit(const Logical&) = 0;
   virtual void Visit(const Grouping&) = 0;
   virtual void Visit(const Literal&) = 0;
   virtual void Visit(const Unary&) = 0;
@@ -44,7 +46,8 @@ class Assign: public Expr
 {
 public:
   Assign(Ptr<scanner::Token> name, Ptr<Expr> value)
-    : name_(name), value_(value)
+    : name_(name),
+      value_(value)
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
@@ -58,7 +61,25 @@ class Binary: public Expr
 {
 public:
   Binary(Ptr<Expr> left, Ptr<scanner::Token> op, Ptr<Expr> right)
-    : left_(left), op_(op), right_(right)
+    : left_(left),
+      op_(op),
+      right_(right)
+  {}
+
+  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
+
+  Ptr<Expr> left_;
+  Ptr<scanner::Token> op_;
+  Ptr<Expr> right_;
+};
+
+class Logical: public Expr
+{
+public:
+  Logical(Ptr<Expr> left, Ptr<scanner::Token> op, Ptr<Expr> right)
+    : left_(left),
+      op_(op),
+      right_(right)
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
@@ -96,7 +117,8 @@ class Unary: public Expr
 {
 public:
   Unary(Ptr<scanner::Token> op, Ptr<Expr> right)
-    : op_(op), right_(right)
+    : op_(op),
+      right_(right)
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }

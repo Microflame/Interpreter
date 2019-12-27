@@ -75,6 +75,13 @@ public:
 #undef INTERP_PUT_WITH_COMMA
   };
 
+  explicit Token(Type type, const char* begin, size_t size, bool content)
+    : object_(common::MakeBool(content)),
+      type_(type),
+      begin_(begin),
+      size_(size)
+  {}
+
   explicit Token(Type type, const char* begin, size_t size, int64_t content)
     : object_(common::MakeInt(content)),
       type_(type),
@@ -113,17 +120,23 @@ public:
     return std::string(begin_, begin_ + size_);
   }
 
+  std::string GetTypeName() const
+  {
+    switch (type_)
+    {
+#define INTERP_PUT_TOKEN_NAME(_) case _: { return #_; }
+      INTERP_FORALL_TOKEN_TYPES(INTERP_PUT_TOKEN_NAME)
+#undef INTERP_PUT_TOKEN_NAME
+      default:
+        return "BAD TOKEN!";
+    }
+  }
+
   std::string ToString() const
   {
     std::stringstream ss;
 
-    switch (type_)
-    {
-#define INTERP_PUT_TOKEN_NAME(_) case _: { ss << #_; break; }
-      INTERP_FORALL_TOKEN_TYPES(INTERP_PUT_TOKEN_NAME)
-#undef INTERP_PUT_TOKEN_NAME
-      default: ss << "BAD TOKEN!";
-    }
+    ss << GetTypeName();
 
     ss << "(\"";
 

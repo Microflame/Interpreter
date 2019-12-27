@@ -83,6 +83,10 @@ public:
 
   std::string ToString() const
   {
+    if (type_ == NONE)
+    {
+      return "None";
+    }
     return held_->ToString();
   }
 

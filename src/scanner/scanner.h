@@ -17,7 +17,7 @@ public:
   Scanner(const std::string& source)
     : kSource(source),
       cur_(kSource.begin()),
-      log_(Logger::kDebug),
+      log_(Logger::kWarning),
       error_(false)
   {
     
@@ -74,7 +74,6 @@ private:
     TryGetKeywordToken("and", Token::AND);
     TryGetKeywordToken("class", Token::CLASS);
     TryGetKeywordToken("else", Token::ELSE);
-    TryGetKeywordToken("false", Token::FALSE);
     TryGetKeywordToken("for", Token::FOR);
     TryGetKeywordToken("func", Token::FUNC);
     TryGetKeywordToken("if", Token::IF);
@@ -83,12 +82,12 @@ private:
     TryGetKeywordToken("print", Token::PRINT);
     TryGetKeywordToken("super", Token::SUPER);
     TryGetKeywordToken("print", Token::THIS);
-    TryGetKeywordToken("true", Token::TRUE);
     TryGetKeywordToken("var", Token::VAR);
     TryGetKeywordToken("while", Token::WHILE);
     TryGetKeywordToken("Int", Token::INT_TYPE);
     TryGetKeywordToken("Float", Token::FLOAT_TYPE);
 
+    TryGetBoolToken();
     TryGetIntToken();
     TryGetFloatToken();
     TryGetIdentifierToken();
@@ -175,6 +174,20 @@ private:
     if (MatchStr(target))
     {
       UpdateCurrentToken(type, token_len);
+    }
+  }
+
+  void TryGetBoolToken()
+  {
+    if (MatchStr("true"))
+    {
+      Token tok(Token::TRUE, &*cur_, 4, true);
+      UpdateCurrentToken(tok);
+    }
+    else if (MatchStr("false"))
+    {
+      Token tok(Token::FALSE, &*cur_, 5, false);
+      UpdateCurrentToken(tok);
     }
   }
 
