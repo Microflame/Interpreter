@@ -76,48 +76,64 @@ private:
 class EnvironmentStack
 {
 public:
-  class EnvironmentGuard
+  class Guard
   {
   public:
-    EnvironmentGuard() = delete;
+    Guard() = delete;
 
-    EnvironmentGuard(EnvironmentStack& stack)
-      : stack_(stack)
+    Guard(EnvironmentStack& stack, std::shared_ptr<Environment> other)
+      : stack_(stack),
+        old_(stack.GetCurrent())
     {
-      stack_.PushEnvironment();
+      stack_.SetCurrent(other);
     }
 
-    ~EnvironmentGuard()
+    Guard(EnvironmentStack& stack)
+      : Guard(stack, std::make_shared<Environment>(stack.GetCurrent()))
+    {}
+
+    ~Guard()
     {
-      stack_.PopEnvironment();
+      stack_.SetCurrent(old_);
     }
 
   private:
     EnvironmentStack& stack_;
+    std::shared_ptr<Environment> old_;
   };
 
   EnvironmentStack()
     : top_(std::make_shared<Environment>())
   {}
 
-  Environment& GetCurrent()
+  std::shared_ptr<Environment> GetCurrent()
   {
-    return *top_;
+    return top_;
   }
 
-  void PushEnvironment()
+  void SetCurrent(std::shared_ptr<Environment> env)
   {
-    top_ = std::make_shared<Environment>(top_);
+    top_ = env;
   }
 
-  void PopEnvironment()
+  std::unique_ptr<Guard> GetGuard()
   {
-    top_ = top_->GetParentEnvironment();
+    return std::make_unique<Guard>(*this);
   }
 
-  std::unique_ptr<EnvironmentGuard> GetGuard()
+  std::unique_ptr<Guard> GetGuard(std::shared_ptr<Environment> other)
   {
-    return std::make_unique<EnvironmentGuard>(*this);
+    return std::make_unique<Guard>(*this, other);
+  }
+
+  std::shared_ptr<Environment> GetRoot()
+  {
+    std::shared_ptr<Environment> root = top_;
+    while (root->GetParentEnvironment())
+    {
+      root = root->GetParentEnvironment();
+    }
+    return root;
   }
 
 private:

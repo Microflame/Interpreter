@@ -12,7 +12,9 @@ namespace stmt
 template <typename T>
 using Ptr = std::shared_ptr<T>;
 
+class Return;
 class Block;
+class Func;
 class If;
 class Expression;
 class Print;
@@ -22,8 +24,10 @@ class Var;
 class IStmtVisitor
 {
 public:
-  virtual void Visit(const If&) = 0;
+  virtual void Visit(const Return&) = 0;
   virtual void Visit(const Block&) = 0;
+  virtual void Visit(const Func&) = 0;
+  virtual void Visit(const If&) = 0;
   virtual void Visit(const Expression&) = 0;
   virtual void Visit(const Print&) = 0;
   virtual void Visit(const While&) = 0;
@@ -38,6 +42,38 @@ public:
   virtual void Accept(IStmtVisitor& vis) const = 0;
 
   ~Stmt() {}
+};
+
+class Return: public Stmt
+{
+public:
+  Return(Ptr<scanner::Token> tok, Ptr<Expr> value)
+    : tok_(tok),
+      value_(value)
+  {}
+
+  void Accept(IStmtVisitor& vis) const { vis.Visit(*this); }
+
+  Ptr<scanner::Token> tok_;
+  Ptr<Expr> value_;
+};
+
+class Func: public Stmt
+{
+public:
+  Func(Ptr<scanner::Token> name,
+       Ptr<std::vector<Ptr<scanner::Token>>> params,
+       Ptr<std::vector<Ptr<Stmt>>> body)
+  : name_(name),
+    params_(params),
+    body_(body)
+  {}
+
+  void Accept(IStmtVisitor& vis) const { vis.Visit(*this); }
+
+  Ptr<scanner::Token> name_;
+  Ptr<std::vector<Ptr<scanner::Token>>> params_;
+  Ptr<std::vector<Ptr<Stmt>>> body_;
 };
 
 class If: public Stmt

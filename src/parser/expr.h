@@ -5,9 +5,17 @@
 #include "scanner/scanner.h"
 #include "common/object.h"
 
-namespace parser
+namespace stmt
 {
 
+class Stmt;
+
+} // namespace stmt
+
+
+namespace parser
+{
+  
 template <typename T>
 using Ptr = std::shared_ptr<T>;
 
@@ -18,6 +26,7 @@ class Grouping;
 class Literal;
 class Unary;
 class Variable;
+class Call;
 
 class IVisitor
 {
@@ -29,6 +38,7 @@ public:
   virtual void Visit(const Literal&) = 0;
   virtual void Visit(const Unary&) = 0;
   virtual void Visit(const Variable&) = 0;
+  virtual void Visit(const Call&) = 0;
 
   virtual ~IVisitor() {}
 };
@@ -137,6 +147,22 @@ public:
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
 
   Ptr<scanner::Token> name_;
+};
+
+class Call: public Expr
+{
+public:
+  Call(Ptr<Expr> callee, Ptr<scanner::Token> paren, Ptr<std::vector<Ptr<Expr>>> args)
+    : callee_(callee),
+      paren_(paren),
+      args_(args)
+  {}
+
+  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
+
+  Ptr<Expr> callee_;
+  Ptr<scanner::Token> paren_;
+  Ptr<std::vector<Ptr<Expr>>> args_;
 };
 
 } // parser

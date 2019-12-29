@@ -1,11 +1,19 @@
 #pragma once
 
+#include "common/callable.h"
+#include "common/object.h"
+
 #include "scanner/token.h"
 #include "parser/expr.h"
-#include "common/object.h"
 #include "util/visitor_getter.h"
+
+#include "builtin/functions.h"
+
+#include "function.h"
 #include "interpret_error.h"
 #include "environment.h"
+
+
 
 namespace interpreter
 {
@@ -15,6 +23,12 @@ class Interpreter: public util::VisitorGetter<Interpreter, parser::Expr, common:
                    public parser::stmt::IStmtVisitor
 {
 public:
+  Interpreter()
+  {
+    GetCurrentEnv().Define("clock", common::MakeCallable(std::make_shared<builtin::functions::ClockBuiltin>()));
+    GetCurrentEnv().Define("print", common::MakeCallable(std::make_shared<builtin::functions::PrintBuiltin>()));
+  }
+
   void Interpret(const std::vector<std::shared_ptr<parser::stmt::Stmt>>& statements)
   {
     try
@@ -36,6 +50,18 @@ public:
     stmt.Accept(*this);
   }
 
+  void Visit(const parser::stmt::Return& stmt)
+  {
+    if (stmt.value_)
+    {
+      retval_ = std::make_shared<common::Object>(Evaluate(*stmt.value_));
+    }
+    else
+    {
+      retval_ = std::make_shared<common::Object>(common::MakeNone());
+    }
+  }
+
   void Visit(const parser::stmt::If& stmt)
   {
     common::Object obj = Evaluate(*stmt.condition_);
@@ -52,6 +78,12 @@ public:
   void Visit(const parser::stmt::Block& stmt)
   {
     ExecuteBlock(stmt);
+  }
+
+  void Visit(const parser::stmt::Func& stmt)
+  {
+    auto fn = std::make_shared<UserDefinedFunction>(std::make_shared<parser::stmt::Func>(stmt));
+    GetCurrentEnv().Define(stmt.name_->ToRawString(), common::MakeCallable(fn));
   }
 
   void Visit(const parser::stmt::Expression& stmt)
@@ -244,26 +276,56 @@ public:
     Return(GetCurrentEnv().Get(expr.name_->ToRawString()));
   }
 
+  void Visit(const parser::Call& expr) override
+  {
+    common::Object callee = Evaluate(*expr.callee_);
+
+    std::vector<common::Object> args;
+    for (const auto& arg: *expr.args_)
+    {
+      args.push_back(Evaluate(*arg));
+    }
+
+    common::ICallable& func = callee.AsCallable();
+    if (func.GetArity() != args.size())
+    {
+      throw std::runtime_error("Wrong arity");
+    }
+    Return(func.Call(*this, args));
+  }
+
 
 private:
-  EnvironmentStack environment_stack;
+  friend class UserDefinedFunction;
+
+  EnvironmentStack environment_stack_;
+  std::shared_ptr<common::Object> retval_;
 
   Environment& GetCurrentEnv()
   {
-    return environment_stack.GetCurrent();
+    return *environment_stack_.GetCurrent();
   }
 
-  std::unique_ptr<EnvironmentStack::EnvironmentGuard> GetEnvGuard()
+  std::unique_ptr<EnvironmentStack::Guard> GetEnvGuard()
   {
-    return environment_stack.GetGuard();
+    return environment_stack_.GetGuard();
   }
 
   void ExecuteBlock(const parser::stmt::Block& stmt)
   {
     auto g = GetEnvGuard();
 
+    ExecuteUnguardedBlock(stmt);
+  }
+
+  void ExecuteUnguardedBlock(const parser::stmt::Block& stmt)
+  {
     for (const auto& s: *stmt.statements_)
     {
+      if (retval_)
+      {
+        return;
+      }
       Execute(*s);
     }
   }

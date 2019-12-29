@@ -79,10 +79,11 @@ private:
     TryGetKeywordToken("if", Token::IF);
     TryGetKeywordToken("none", Token::NONE);
     TryGetKeywordToken("or", Token::OR);
-    TryGetKeywordToken("print", Token::PRINT);
+    // TryGetKeywordToken("print", Token::PRINT);
     TryGetKeywordToken("super", Token::SUPER);
-    TryGetKeywordToken("print", Token::THIS);
+    TryGetKeywordToken("this", Token::THIS);
     TryGetKeywordToken("var", Token::VAR);
+    TryGetKeywordToken("return", Token::RETURN);
     TryGetKeywordToken("while", Token::WHILE);
     TryGetKeywordToken("Int", Token::INT_TYPE);
     TryGetKeywordToken("Float", Token::FLOAT_TYPE);

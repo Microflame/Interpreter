@@ -7,6 +7,18 @@
 namespace common
 {
 
+class ICallable;
+
+template <typename T>
+decltype(std::to_string(T())) ToStringImpl(const T& val)
+{
+  return std::to_string(val);
+}
+
+std::string ToStringImpl(const std::string& val);
+
+std::string ToStringImpl(const std::shared_ptr<ICallable>& val);
+
 class Object
 {
 public:
@@ -17,6 +29,7 @@ public:
     STRING,
     IDENTIFIER,
     BOOLEAN,
+    CALLABLE,
     NONE
   };
 
@@ -24,9 +37,7 @@ public:
 
   template <typename T>
   Object(Type type, T val) : type_(type), held_(std::make_shared<Holder<T>>(val))
-  {
-    // TODO: Add static assert to ensure that `type` and `val` are a match
-  }
+  {}
 
   virtual ~Object() {}
 
@@ -62,6 +73,12 @@ public:
     return held_->As<bool>();
   }
 
+  ICallable& AsCallable() const
+  {
+    AssumeType(CALLABLE);
+    return *held_->As<std::shared_ptr<ICallable>>();
+  }
+
   std::string GetTypeName()
   {
     return GetTypeName(type_);
@@ -76,6 +93,7 @@ public:
       case STRING: return "STRING";
       case IDENTIFIER: return "IDENTIFIER";
       case BOOLEAN: return "BOOLEAN";
+      case CALLABLE: return "CALLABLE";
       case NONE: return "NONE";
     }
     return "Bad type: " + std::to_string(type);
@@ -161,27 +179,11 @@ private:
 
     std::string ToString() const override
     {
-      return ToStringImpl();
+      return ToStringImpl(held_);
     }
 
   private:
     T held_;
-
-
-    //TODO: c'mon just use static polymorphism
-    template <typename U = T>
-    typename std::enable_if<!std::is_same<std::string, U>::value, std::string>::type
-    ToStringImpl() const
-    {
-      return std::to_string(held_);
-    }
-
-    template <typename U = T>
-    typename std::enable_if<std::is_same<std::string, U>::value, std::string>::type
-    ToStringImpl() const
-    {
-      return held_;
-    }
   };
 
   Type type_;
@@ -189,30 +191,17 @@ private:
 };
 
 
-Object MakeInt(int64_t val)
-{
-  return Object(Object::INT, val);
-}
+Object MakeInt(int64_t val);
 
-Object MakeFloat(double val)
-{
-  return Object(Object::FLOAT, val);
-}
+Object MakeFloat(double val);
 
-Object MakeString(std::string val)
-{
-  return Object(Object::STRING, val);
-}
+Object MakeString(const std::string& val);
 
-Object MakeBool(bool val)
-{
-  return Object(Object::BOOLEAN, val);
-}
+Object MakeBool(bool val);
 
-Object MakeNone()
-{
-  return Object();
-}
+Object MakeNone();
+
+Object MakeCallable(std::shared_ptr<common::ICallable> val);
 
 
 } // namespace common
