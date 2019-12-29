@@ -33,32 +33,16 @@ public:
     env_[name] = obj;
   }
 
-  common::Object& Get(const std::string& name)
+  common::Object& GetAt(const std::string& name, size_t depth)
   {
+    if (depth)
+    {
+      return GetParentEnvironment()->GetAt(name, depth - 1);
+    }
     auto it = env_.find(name);
     if (it != env_.end())
     {
       return it->second;
-    }
-    if (parent_env_)
-    {
-      return parent_env_->Get(name);
-    }
-    throw std::runtime_error(name + " is not defined.");
-  }
-
-  void Assign(const std::string& name, common::Object obj)
-  {
-    auto it = env_.find(name);
-    if (it != env_.end())
-    {
-      it->second = obj;
-      return;
-    }
-    if (parent_env_)
-    {
-      parent_env_->Assign(name, obj);
-      return;
     }
     throw std::runtime_error(name + " is not defined.");
   }

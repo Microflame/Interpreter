@@ -46,6 +46,16 @@ public:
 class Expr
 {
 public:
+  const size_t kId;
+
+  Expr()
+    : kId(-1)
+  {}
+
+  Expr(size_t id)
+    : kId(id)
+  {}
+
   virtual void Accept(IVisitor& visitor) const = 0;
 
   virtual ~Expr() {}
@@ -55,8 +65,9 @@ public:
 class Assign: public Expr
 {
 public:
-  Assign(Ptr<scanner::Token> name, Ptr<Expr> value)
-    : name_(name),
+  Assign(Ptr<scanner::Token> name, Ptr<Expr> value, size_t id)
+    : Expr(id),
+      name_(name),
       value_(value)
   {}
 
@@ -140,8 +151,9 @@ public:
 class Variable: public Expr
 {
 public:
-  Variable(Ptr<scanner::Token> name)
-    : name_(name)
+  Variable(Ptr<scanner::Token> name, size_t id)
+    : Expr(id),
+      name_(name)
   {}
 
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }

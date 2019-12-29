@@ -8,6 +8,7 @@
 #include "parser/stmt.h"
 #include "parser/parser.h"
 // #include "experimental/ast_printer.h"
+#include "resolver/resolver.h"
 #include "interpreter/interpreter.h"
 
 int ReadFile(const char* path)
@@ -39,6 +40,9 @@ int ReadFile(const char* path)
   // std::cout << AstPrinter::GetValue(*expr) << "\n";
 
   interpreter::Interpreter interpreter;
+  resolver::Resolver resolver(interpreter);
+
+  resolver.Resolve(statements);
 
   interpreter.Interpret(statements);
 

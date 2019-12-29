@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+
 #include "common/callable.h"
 #include "common/object.h"
 
@@ -120,7 +122,9 @@ public:
   void Visit(const parser::Assign& expr) override
   {
     common::Object obj = Evaluate(*expr.value_);
-    GetCurrentEnv().Assign(expr.name_->ToRawString(), obj);
+
+    LookupVariable(expr, *expr.name_) = obj;
+
     Return(obj);
   }
 
@@ -274,7 +278,7 @@ public:
 
   void Visit(const parser::Variable& expr) override
   {
-    Return(GetCurrentEnv().Get(expr.name_->ToRawString()));
+    Return(LookupVariable(expr, *expr.name_));
   }
 
   void Visit(const parser::Call& expr) override
@@ -295,12 +299,23 @@ public:
     Return(func.Call(*this, args));
   }
 
+  void Resolve(const parser::Expr& expr, size_t depth)
+  {
+    size_t id = expr.kId;
+    if (id == (size_t)-1)
+    {
+      throw std::logic_error("id == -1");
+    }
+    resolve_[id] = depth;
+  }
+
 
 private:
   friend class UserDefinedFunction;
 
   EnvironmentStack environment_stack_;
   std::shared_ptr<common::Object> retval_;
+  std::unordered_map<size_t, size_t> resolve_;
 
   Environment& GetCurrentEnv()
   {
@@ -329,6 +344,16 @@ private:
       }
       Execute(*s);
     }
+  }
+
+  common::Object& LookupVariable(const parser::Expr& expr, const scanner::Token& name)
+  {
+    auto it = resolve_.find(expr.kId);
+    if (it == resolve_.end())
+    {
+      throw std::runtime_error("Unresolved identifier \"" + name.ToRawString() + "\"");
+    }
+    return GetCurrentEnv().GetAt(name.ToRawString(), it->second);
   }
 
   common::Object Evaluate(const parser::Expr& expr)

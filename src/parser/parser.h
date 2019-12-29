@@ -15,7 +15,11 @@ class Parser
 {
 public:
   Parser(const std::string& source, const std::vector<scanner::Token>& tokens)
-    : kSource(source), kTokens(tokens), log_(Logger::kDebug), error_(false)
+    : kSource(source),
+      kTokens(tokens),
+      log_(Logger::kDebug),
+      error_(false),
+      id_(1)
   {}
 
 
@@ -40,6 +44,7 @@ private:
   size_t cur_;
   Logger log_;
   bool error_;
+  size_t id_;
 
   Ptr<stmt::Stmt> ParseDeclarationOrStatement()
   {
@@ -278,7 +283,7 @@ private:
         throw std::runtime_error("Bad assignment target.");
       }
 
-      expr = std::make_shared<Assign>(var->name_, value);
+      expr = std::make_shared<Assign>(var->name_, value, id_++);
     }
 
     return expr;
@@ -444,7 +449,7 @@ private:
     if (GetCurrentToken().GetType() == scanner::Token::IDENTIFIER)
     {
       const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
-      return std::make_shared<Variable>(std::make_shared<scanner::Token>(op));
+      return std::make_shared<Variable>(std::make_shared<scanner::Token>(op), id_++);
     }
 
     ExpectToken(scanner::Token::LEFT_PAREN, "expression");
