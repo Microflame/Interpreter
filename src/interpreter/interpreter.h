@@ -82,7 +82,8 @@ public:
 
   void Visit(const parser::stmt::Func& stmt)
   {
-    auto fn = std::make_shared<UserDefinedFunction>(std::make_shared<parser::stmt::Func>(stmt));
+    auto fn = std::make_shared<UserDefinedFunction>(std::make_shared<parser::stmt::Func>(stmt),
+                                                    environment_stack_.GetCurrent());
     GetCurrentEnv().Define(stmt.name_->ToRawString(), common::MakeCallable(fn));
   }
 

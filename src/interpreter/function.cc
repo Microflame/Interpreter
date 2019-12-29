@@ -5,14 +5,16 @@
 namespace interpreter
 {
 
-UserDefinedFunction::UserDefinedFunction(std::shared_ptr<parser::stmt::Func> func)
-  : func_(func)
+UserDefinedFunction::UserDefinedFunction(std::shared_ptr<parser::stmt::Func> func,  
+                                         std::shared_ptr<Environment> closure)
+  : func_(func),
+    closure_(closure)
 {}
 
 common::Object UserDefinedFunction::Call(interpreter::Interpreter& interpreter,
                                          std::vector<common::Object>& args) const
 {
-  auto g = interpreter.environment_stack_.GetGuard(std::make_shared<Environment>(interpreter.environment_stack_.GetRoot()));
+  auto g = interpreter.environment_stack_.GetGuard(std::make_shared<Environment>(closure_));
 
   for (size_t i = 0; i < args.size(); ++i)
   {

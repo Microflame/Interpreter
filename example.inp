@@ -1,12 +1,16 @@
-func time()
-{
-  var t = clock();
-  t = t / 1000.0;
-  return t;
-  print("this should not print");
+func makeCounter() {
+  var i = 0;
+  func count() {
+    i = i + 1;
+    print(i);
+  }
+
+  return count;
 }
 
-print(time());
+var counter = makeCounter();
+counter();
+counter();
 
 /*
 var i = 0;
