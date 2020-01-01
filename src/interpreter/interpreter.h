@@ -93,7 +93,15 @@ public:
   void Visit(const parser::stmt::Class& stmt)
   {
     GetCurrentEnv().Define(stmt.name_->ToRawString(), common::MakeNone());
-    auto ptr = std::make_shared<ClassImpl>(stmt.name_->ToRawString());
+
+    std::unordered_map<std::string, std::shared_ptr<common::Object>> methods;
+    for (auto m: *stmt.methods_)
+    {
+      auto fn = std::make_shared<UserDefinedFunction>(m, environment_stack_.GetCurrent());
+      methods[m->name_->ToRawString()] = std::make_shared<common::Object>(common::MakeCallable(fn));
+    }
+
+    auto ptr = std::make_shared<ClassImpl>(stmt.name_->ToRawString(), methods);
     ptr->SetSelf(ptr);
     common::Object obj = common::MakeClass(ptr);
     GetCurrentEnv().GetAt(stmt.name_->ToRawString(), 0) = obj;
@@ -127,6 +135,12 @@ public:
     }
 
     GetCurrentEnv().Define(stmt.name_->ToRawString(), init);
+  }
+
+  void Visit(const parser::This& expr) override
+  {
+    common::Object& obj = LookupVariable(expr, *expr.name_);
+    Return(obj);
   }
 
   void Visit(const parser::Get& expr) override
@@ -247,9 +261,9 @@ public:
       bool right_str = right.GetType() == common::Object::STRING;
       if (left_str || right_str)
       {
-        if ((left_str && right_str) && (op_type == scanner::Token::PLUS))
+        if (op_type == scanner::Token::PLUS)
         {
-          Return(common::MakeString(left.AsString() + right.AsString()));
+          Return(common::MakeString(left.ToString() + right.ToString()));
           return;
         }
         throw InterpretError(*expr.op_, left.GetTypeName() + " and " + right.GetTypeName() + " are not valid for +.");

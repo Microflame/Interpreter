@@ -21,6 +21,7 @@ using Ptr = std::shared_ptr<T>;
 
 class Assign;
 class Get;
+class This;
 class Set;
 class Binary;
 class Logical;
@@ -35,6 +36,7 @@ class IVisitor
 public:
   virtual void Visit(const Assign&) = 0;
   virtual void Visit(const Get&) = 0;
+  virtual void Visit(const This&) = 0;
   virtual void Visit(const Set&) = 0;
   virtual void Visit(const Binary&) = 0;
   virtual void Visit(const Logical&) = 0;
@@ -65,6 +67,19 @@ public:
   virtual ~Expr() {}
 };
 
+
+class This: public Expr
+{
+public:
+  This(Ptr<scanner::Token> name, size_t id)
+    : Expr(id),
+      name_(name)
+  {}
+
+  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
+
+  Ptr<scanner::Token> name_;
+};
 
 class Get: public Expr
 {

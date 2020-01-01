@@ -24,6 +24,7 @@ public:
     scopes_.back()["print"] = true;
     scopes_.back()["clock"] = true;
     context_stack_.push_back(ContextType::GLOBAL);
+    class_stack_.push_back(ClassType::NONE);
   }
 
   void Resolve(const std::vector<std::shared_ptr<parser::stmt::Stmt>>& stmts)
@@ -42,9 +43,16 @@ private:
     METHOD
   };
 
+  enum class ClassType
+  {
+    NONE,
+    CLASS
+  };
+
   interpreter::Interpreter& interpreter_;
   std::vector<std::unordered_map<std::string, bool>> scopes_;
   std::vector<ContextType> context_stack_;
+  std::vector<ClassType> class_stack_;
 
   void Visit(const parser::stmt::Return& stmt)
   {
@@ -70,19 +78,33 @@ private:
     Declare(*stmt.name_);
     Define(*stmt.name_);
 
-    ResolveFunction(stmt);
+    ResolveFunction(stmt, ContextType::FUNCTION);
   }
   
   void Visit(const parser::stmt::Class& stmt)
   {
+    class_stack_.push_back(ClassType::CLASS);
+
     Declare(*stmt.name_);
     Define(*stmt.name_);
+
+    BeginScope();
+    scopes_.back()["this"] = true;
+
+    for (auto& m: *stmt.methods_)
+    {
+      ResolveFunction(*m, ContextType::METHOD);
+    }
+
+    EndScope();
+    class_stack_.pop_back();
   }
   
   void Visit(const parser::stmt::If& stmt)
   {
     Resolve(*stmt.condition_);
     Resolve(*stmt.stmt_true_);
+
     if (stmt.stmt_false_)
     {
       Resolve(*stmt.stmt_false_);
@@ -115,6 +137,15 @@ private:
     Define(*stmt.name_);
   }
   
+
+  void Visit(const parser::This& expr)
+  {
+    if (class_stack_.back() == ClassType::NONE)
+    {
+      throw std::runtime_error("Can not use \"this\" outside class.");
+    }
+    ResolveLocal(expr, *expr.name_);
+  }
 
   void Visit(const parser::Get& expr)
   {
@@ -229,9 +260,9 @@ private:
     }
   }
 
-  void ResolveFunction(const parser::stmt::Func& func)
+  void ResolveFunction(const parser::stmt::Func& func, ContextType context_type)
   {
-    context_stack_.push_back(ContextType::FUNCTION);
+    context_stack_.push_back(context_type);
     BeginScope();
     for (const auto& t: *func.params_)
     {

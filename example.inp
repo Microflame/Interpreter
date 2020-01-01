@@ -1,19 +1,17 @@
-class TestType {
-  serveOn() {
-    return "Scones";
+class Thing {
+  __init(a, b)
+  {
+    this.a_ = a;
+    this.b_ = b;
+  }
+  
+  print()
+  {
+    print("a_: " + this.a_ + ", b_: " + this.b_);
   }
 }
 
-
-var obj = TestType();
-
-obj.field = "Test string field";
-
-print(obj.field);
-
-obj.field = 123;
-
-print(obj.field);
+Thing("A", 123).print();
 
 /*
 var a = "global";

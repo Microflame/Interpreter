@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "common/object.h"
 #include "common/class.h"
@@ -15,9 +16,22 @@ class Interpreter;
 class ClassImpl: public common::IClass
 {
 public:
-  ClassImpl(const std::string& name)
-    : kName(name)
+  using Methods = std::unordered_map<std::string, std::shared_ptr<common::Object>>;
+
+  ClassImpl(const std::string& name, Methods& methods)
+    : kName(name),
+      methods_(std::move(methods))
   {}
+
+  std::shared_ptr<common::Object> FindMethod(const std::string& name) const override
+  {
+    auto it = methods_.find(name);
+    if (it == methods_.end())
+    {
+      return nullptr;
+    }
+    return it->second;
+  }
 
   std::string GetName() const override
   {
@@ -28,11 +42,21 @@ public:
   {
     auto ptr = std::make_shared<InstanceImpl>(self_.lock());
     common::Object obj = common::MakeInstance(ptr);
+    auto init = FindMethod("__init");
+    if (init)
+    {
+      init->AsCallable().Bind("this", obj)->Call(interpreter, args);
+    }
     return obj;
   }
 
   size_t GetArity() const override
   {
+    auto init = FindMethod("__init");
+    if (init)
+    {
+      return init->AsCallable().GetArity();
+    }
     return 0;
   }
 
@@ -43,6 +67,7 @@ public:
 
 private:
   const std::string kName;
+  Methods methods_;
   std::weak_ptr<ClassImpl> self_;
 };
 

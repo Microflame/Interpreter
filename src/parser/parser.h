@@ -87,11 +87,11 @@ private:
     ExpectToken(scanner::Token::LEFT_PAREN, "(");
     if (GetCurrentToken().GetType() != scanner::Token::RIGHT_PAREN)
     {
-      params->push_back(std::make_shared<scanner::Token>(GetCurrentToken()));
+      params->push_back(std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator()));
       while (GetCurrentToken().GetType() == scanner::Token::COMMA)
       {
         ++cur_;
-        params->push_back(std::make_shared<scanner::Token>(GetCurrentToken()));
+        params->push_back(std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator()));
       }
     }
     ExpectToken(scanner::Token::RIGHT_PAREN, ")");
@@ -477,6 +477,12 @@ private:
     {
       const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
       return std::make_shared<Literal>(std::make_shared<scanner::Token>(op));
+    }
+
+    if (GetCurrentToken().GetType() == scanner::Token::THIS)
+    {
+      const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
+      return std::make_shared<This>(std::make_shared<scanner::Token>(op), id_++);
     }
 
     if (GetCurrentToken().GetType() == scanner::Token::IDENTIFIER)

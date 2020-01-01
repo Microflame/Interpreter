@@ -43,4 +43,11 @@ size_t UserDefinedFunction::GetArity() const
   return func_->params_->size();
 }
 
+std::shared_ptr<common::ICallable> UserDefinedFunction::Bind(const std::string& name, common::Object arg) const
+{
+  std::shared_ptr<Environment> wrapper = std::make_shared<Environment>(closure_);
+  wrapper->Define(name, arg);
+  return std::make_shared<UserDefinedFunction>(func_, wrapper);
+}
+
 } // namespace interpreter

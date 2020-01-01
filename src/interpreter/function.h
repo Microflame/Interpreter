@@ -23,6 +23,8 @@ public:
 
   size_t GetArity() const override;
 
+  std::shared_ptr<common::ICallable> Bind(const std::string& name, common::Object arg) const override;
+
 private:
   std::shared_ptr<parser::stmt::Func> func_;
   std::shared_ptr<Environment> closure_;

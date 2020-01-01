@@ -32,6 +32,11 @@ public:
   {
     throw std::logic_error("GetArity() not implemented.");
   }
+
+  virtual Ptr<ICallable> Bind(const std::string& name, common::Object arg) const
+  {
+    throw std::logic_error("Bind() not implemented.");
+  }
 };
 
 template <typename T, size_t A>
