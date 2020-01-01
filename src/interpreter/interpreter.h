@@ -12,6 +12,7 @@
 #include "builtin/functions.h"
 
 #include "function.h"
+#include "class_impl.h"
 #include "interpret_error.h"
 #include "environment.h"
 
@@ -89,6 +90,15 @@ public:
     GetCurrentEnv().Define(stmt.name_->ToRawString(), common::MakeCallable(fn));
   }
 
+  void Visit(const parser::stmt::Class& stmt)
+  {
+    GetCurrentEnv().Define(stmt.name_->ToRawString(), common::MakeNone());
+    auto ptr = std::make_shared<ClassImpl>(stmt.name_->ToRawString());
+    ptr->SetSelf(ptr);
+    common::Object obj = common::MakeClass(ptr);
+    GetCurrentEnv().GetAt(stmt.name_->ToRawString(), 0) = obj;
+  }
+
   void Visit(const parser::stmt::Expression& stmt)
   {
     Evaluate(*stmt.expr_);
@@ -117,6 +127,34 @@ public:
     }
 
     GetCurrentEnv().Define(stmt.name_->ToRawString(), init);
+  }
+
+  void Visit(const parser::Get& expr) override
+  {
+    common::Object obj = Evaluate(*expr.object_);
+
+    if (obj.GetType() == common::Object::INSTANCE)
+    {
+      Return(obj.AsInstance().Get(expr.name_->ToRawString(), false));
+      return;
+    }
+
+    throw std::runtime_error("Expected <instance> before \".\"");
+  }
+
+  void Visit(const parser::Set& expr) override
+  {
+    common::Object obj = Evaluate(*expr.object_);
+
+    if (obj.GetType() == common::Object::INSTANCE)
+    {
+      common::Object value = Evaluate(*expr.value_);
+      obj.AsInstance().Get(expr.name_->ToRawString(), true) = value;
+      Return(value);
+      return;
+    }
+
+    throw std::runtime_error("Expected <instance> before \".\"");
   }
 
   void Visit(const parser::Assign& expr) override

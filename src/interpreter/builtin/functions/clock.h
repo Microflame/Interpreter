@@ -24,6 +24,11 @@ public:
     return common::MakeInt(num_millis);
   }
 
+  std::string GetName() const override
+  {
+    return "ClockBuiltin";
+  }
+
   size_t GetArity() const override
   {
     return 0;

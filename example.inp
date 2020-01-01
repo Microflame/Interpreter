@@ -1,3 +1,21 @@
+class TestType {
+  serveOn() {
+    return "Scones";
+  }
+}
+
+
+var obj = TestType();
+
+obj.field = "Test string field";
+
+print(obj.field);
+
+obj.field = 123;
+
+print(obj.field);
+
+/*
 var a = "global";
 print(a);
 {
@@ -10,6 +28,7 @@ print(a);
   showA();
   print(a);
 }
+*/
 
 /*
 func makeCounter() {

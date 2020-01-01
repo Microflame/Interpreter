@@ -21,6 +21,11 @@ public:
     return common::MakeNone();
   }
 
+  std::string GetName() const override
+  {
+    return "PrintBuiltin";
+  }
+
   size_t GetArity() const override
   {
     return 1;

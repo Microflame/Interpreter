@@ -19,6 +19,8 @@ public:
 
   common::Object Call(interpreter::Interpreter& interpreter, std::vector<common::Object>& args) const override;
 
+  std::string GetName() const override;
+
   size_t GetArity() const override;
 
 private:

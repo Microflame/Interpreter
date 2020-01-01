@@ -73,6 +73,12 @@ private:
     ResolveFunction(stmt);
   }
   
+  void Visit(const parser::stmt::Class& stmt)
+  {
+    Declare(*stmt.name_);
+    Define(*stmt.name_);
+  }
+  
   void Visit(const parser::stmt::If& stmt)
   {
     Resolve(*stmt.condition_);
@@ -109,6 +115,17 @@ private:
     Define(*stmt.name_);
   }
   
+
+  void Visit(const parser::Get& expr)
+  {
+    Resolve(*expr.object_);
+  }
+
+  void Visit(const parser::Set& expr)
+  {
+    Resolve(*expr.object_);
+    Resolve(*expr.value_);
+  }
 
   void Visit(const parser::Assign& expr)
   {

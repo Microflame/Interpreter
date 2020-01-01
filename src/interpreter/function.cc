@@ -33,6 +33,11 @@ common::Object UserDefinedFunction::Call(interpreter::Interpreter& interpreter,
   return retval;
 }
 
+std::string UserDefinedFunction::GetName() const
+{
+  return func_->name_->ToRawString();
+}
+
 size_t UserDefinedFunction::GetArity() const
 {
   return func_->params_->size();

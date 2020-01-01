@@ -4,10 +4,15 @@
 #include <stdexcept>
 #include <type_traits>
 
+// #include "callable.h"
+// #include "iclass.h"
+
 namespace common
 {
 
 class ICallable;
+class IClass;
+class IInstance;
 
 template <typename T>
 decltype(std::to_string(T())) ToStringImpl(const T& val)
@@ -18,6 +23,10 @@ decltype(std::to_string(T())) ToStringImpl(const T& val)
 std::string ToStringImpl(const std::string& val);
 
 std::string ToStringImpl(const std::shared_ptr<ICallable>& val);
+
+std::string ToStringImpl(const std::shared_ptr<IClass>& val);
+
+std::string ToStringImpl(const std::shared_ptr<IInstance>& val);
 
 class Object
 {
@@ -30,6 +39,8 @@ public:
     IDENTIFIER,
     BOOLEAN,
     CALLABLE,
+    CLASS,
+    INSTANCE,
     NONE
   };
 
@@ -73,10 +84,18 @@ public:
     return held_->As<bool>();
   }
 
-  ICallable& AsCallable() const
+  ICallable& AsCallable() const;
+
+  IClass& AsClass() const
   {
-    AssumeType(CALLABLE);
-    return *held_->As<std::shared_ptr<ICallable>>();
+    AssumeType(CLASS);
+    return *held_->As<std::shared_ptr<IClass>>();
+  }
+
+  IInstance& AsInstance() const
+  {
+    AssumeType(INSTANCE);
+    return *held_->As<std::shared_ptr<IInstance>>();
   }
 
   std::string GetTypeName()
@@ -94,6 +113,8 @@ public:
       case IDENTIFIER: return "IDENTIFIER";
       case BOOLEAN: return "BOOLEAN";
       case CALLABLE: return "CALLABLE";
+      case CLASS: return "CLASS";
+      case INSTANCE: return "INSTANCE";
       case NONE: return "NONE";
     }
     return "Bad type: " + std::to_string(type);
@@ -202,6 +223,10 @@ Object MakeBool(bool val);
 Object MakeNone();
 
 Object MakeCallable(std::shared_ptr<common::ICallable> val);
+
+Object MakeClass(std::shared_ptr<common::IClass> val);
+
+Object MakeInstance(std::shared_ptr<common::IInstance> val);
 
 
 } // namespace common

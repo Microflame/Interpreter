@@ -26,6 +26,8 @@ public:
     throw std::logic_error("Call() not implemented.");
   }
 
+  virtual std::string GetName() const = 0;
+
   virtual size_t GetArity() const
   {
     throw std::logic_error("GetArity() not implemented.");

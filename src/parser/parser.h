@@ -60,6 +60,11 @@ private:
         ++cur_;
         return ParseFuncDeclaration();
       }
+      if (GetCurrentToken().GetType() == scanner::Token::CLASS)
+      {
+        ++cur_;
+        return ParseClassDeclaration();
+      }
 
       return ParseStmt();
     }
@@ -72,7 +77,7 @@ private:
     return ParseExpressionStmt();
   }
 
-  Ptr<stmt::Stmt> ParseFuncDeclaration()
+  Ptr<stmt::Func> ParseFuncDeclaration()
   {
     ExpectToken(scanner::Token::IDENTIFIER, "identifier", false);
     Ptr<scanner::Token> name = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
@@ -95,6 +100,24 @@ private:
     Ptr<std::vector<Ptr<stmt::Stmt>>> body = ParseBlock();
 
     return std::make_shared<stmt::Func>(name, params, body);
+  }
+
+  Ptr<stmt::Stmt> ParseClassDeclaration()
+  {
+    ExpectToken(scanner::Token::IDENTIFIER, "identifier", false);
+    Ptr<scanner::Token> name = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
+
+    ExpectToken(scanner::Token::LEFT_BRACE, "{");
+
+    Ptr<std::vector<Ptr<stmt::Func>>> methods = std::make_shared<std::vector<Ptr<stmt::Func>>>();
+    while (GetCurrentToken().GetType() != scanner::Token::RIGHT_BRACE && Remaining())
+    {
+      methods->push_back(ParseFuncDeclaration());
+    }
+
+    ExpectToken(scanner::Token::RIGHT_BRACE, "}");
+
+    return std::make_shared<stmt::Class>(name, methods);
   }
 
   Ptr<stmt::Stmt> ParseVarDeclaration()
@@ -276,14 +299,18 @@ private:
       Ptr<scanner::Token> tok = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
       Ptr<Expr> value = ParseAssign();
 
-      Variable* var = dynamic_cast<Variable*>(expr.get());
-
-      if (var == nullptr)
+      if (Variable* ptr = dynamic_cast<Variable*>(expr.get()))
+      {
+        expr = std::make_shared<Assign>(ptr->name_, value, id_++);
+      }
+      else if (Get* ptr = dynamic_cast<Get*>(expr.get()))
+      {
+        expr = std::make_shared<Set>(ptr->object_, ptr->name_, value);
+      }
+      else
       {
         throw std::runtime_error("Bad assignment target.");
       }
-
-      expr = std::make_shared<Assign>(var->name_, value, id_++);
     }
 
     return expr;
@@ -402,6 +429,12 @@ private:
       {
         ++cur_;
         expr = FinishCall(expr);
+      }
+      else if (GetCurrentToken().GetType() == scanner::Token::DOT)
+      {
+        ++cur_;
+        std::shared_ptr<scanner::Token> name = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
+        expr = std::make_shared<Get>(expr, name);
       }
       else
       {
