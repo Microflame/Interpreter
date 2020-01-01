@@ -82,14 +82,17 @@ class Class: public Stmt
 {
 public:
   Class(Ptr<scanner::Token> name,
+        Ptr<Variable> super,
         Ptr<std::vector<Ptr<Func>>> methods)
   : name_(name),
+    super_(super),
     methods_(methods)
   {}
 
   void Accept(IStmtVisitor& vis) const { vis.Visit(*this); }
 
   Ptr<scanner::Token> name_;
+  Ptr<Variable> super_;
   Ptr<std::vector<Ptr<Func>>> methods_;
 };
 

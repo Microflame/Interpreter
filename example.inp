@@ -1,17 +1,23 @@
-class Thing {
-  __init(a, b)
-  {
-    this.a_ = a;
-    this.b_ = b;
-  }
-  
-  print()
-  {
-    print("a_: " + this.a_ + ", b_: " + this.b_);
+class A {
+  method() {
+    print("A method");
   }
 }
 
-Thing("A", 123).print();
+class B : A {
+  method() {
+    print("B method");
+  }
+
+  test() {
+    super.method();
+  }
+}
+
+class C : B {}
+
+C().test();
+C().method();
 
 /*
 var a = "global";

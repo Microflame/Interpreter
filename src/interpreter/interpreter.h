@@ -92,7 +92,21 @@ public:
 
   void Visit(const parser::stmt::Class& stmt)
   {
+    common::Object super = common::MakeNone();
+    if (stmt.super_)
+    {
+      super = Evaluate(*stmt.super_);
+      super.AssumeType(common::Object::CLASS);
+    }
+
     GetCurrentEnv().Define(stmt.name_->ToRawString(), common::MakeNone());
+
+    std::unique_ptr<EnvironmentStack::Guard> super_g;
+    if (stmt.super_)
+    {
+      super_g = GetEnvGuard();
+      GetCurrentEnv().Define("super", super);
+    }
 
     std::unordered_map<std::string, std::shared_ptr<common::Object>> methods;
     for (auto m: *stmt.methods_)
@@ -101,9 +115,15 @@ public:
       methods[m->name_->ToRawString()] = std::make_shared<common::Object>(common::MakeCallable(fn));
     }
 
-    auto ptr = std::make_shared<ClassImpl>(stmt.name_->ToRawString(), methods);
+    auto ptr = std::make_shared<ClassImpl>(stmt.name_->ToRawString(), super, methods);
     ptr->SetSelf(ptr);
     common::Object obj = common::MakeClass(ptr);
+
+    if (stmt.super_)
+    {
+      delete super_g.release();
+    }
+
     GetCurrentEnv().GetAt(stmt.name_->ToRawString(), 0) = obj;
   }
 
@@ -141,6 +161,32 @@ public:
   {
     common::Object& obj = LookupVariable(expr, *expr.name_);
     Return(obj);
+  }
+
+  void Visit(const parser::Super& expr) override
+  {
+    auto it = resolve_.find(expr.kId);
+    if (it == resolve_.end())
+    {
+      throw std::runtime_error("Unresolved identifier \"super\"");
+    }
+    size_t depth = it->second;
+    if (!depth)
+    {
+      throw std::logic_error("Depth == 0");
+    }
+
+    common::Object& super = GetCurrentEnv().GetAt("super", depth);
+    common::Object& this_instance = GetCurrentEnv().GetAt("this", depth - 1);
+
+    auto p = super.AsClass().FindMethod(expr.method_->ToRawString());
+    if (!p)
+    {
+      throw std::runtime_error("Method \"" + expr.method_->ToRawString() + "\" not found.");
+    }
+    auto bind = p->AsCallable().Bind("this", this_instance);
+
+    Return(common::MakeCallable(bind));
   }
 
   void Visit(const parser::Get& expr) override

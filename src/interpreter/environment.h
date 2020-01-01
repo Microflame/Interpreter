@@ -20,9 +20,12 @@ public:
 
   Environment(std::shared_ptr<Environment> parent_env)
     : parent_env_(parent_env)
-  {}
+  {
+  }
 
-  ~Environment() {}
+  ~Environment()
+  {
+  }
 
   void Define(const std::string& name, common::Object obj)
   {

@@ -88,6 +88,19 @@ private:
     Declare(*stmt.name_);
     Define(*stmt.name_);
 
+    if (stmt.super_)
+    {
+      if (stmt.super_->name_->ToRawString() == stmt.name_->ToRawString())
+      {
+        throw std::runtime_error("Class can not inherit itself.");
+      }
+
+      Resolve(*stmt.super_);
+
+      BeginScope();
+      scopes_.back()["super"] = true;
+    }
+
     BeginScope();
     scopes_.back()["this"] = true;
 
@@ -98,6 +111,11 @@ private:
 
     EndScope();
     class_stack_.pop_back();
+
+    if (stmt.super_)
+    {
+      EndScope();
+    }
   }
   
   void Visit(const parser::stmt::If& stmt)
@@ -137,6 +155,11 @@ private:
     Define(*stmt.name_);
   }
   
+
+  void Visit(const parser::Super& expr)
+  {
+    ResolveLocal(expr, *expr.name_);
+  }
 
   void Visit(const parser::This& expr)
   {

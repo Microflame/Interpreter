@@ -107,6 +107,14 @@ private:
     ExpectToken(scanner::Token::IDENTIFIER, "identifier", false);
     Ptr<scanner::Token> name = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
 
+    Ptr<Variable> super;
+    if (GetCurrentToken().GetType() == scanner::Token::COLON)
+    {
+      ++cur_;
+      ExpectToken(scanner::Token::IDENTIFIER, "identifier", false);
+      super = std::make_shared<Variable>(std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator()), id_++);
+    }
+
     ExpectToken(scanner::Token::LEFT_BRACE, "{");
 
     Ptr<std::vector<Ptr<stmt::Func>>> methods = std::make_shared<std::vector<Ptr<stmt::Func>>>();
@@ -117,7 +125,7 @@ private:
 
     ExpectToken(scanner::Token::RIGHT_BRACE, "}");
 
-    return std::make_shared<stmt::Class>(name, methods);
+    return std::make_shared<stmt::Class>(name, super, methods);
   }
 
   Ptr<stmt::Stmt> ParseVarDeclaration()
@@ -483,6 +491,16 @@ private:
     {
       const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
       return std::make_shared<This>(std::make_shared<scanner::Token>(op), id_++);
+    }
+
+    if (GetCurrentToken().GetType() == scanner::Token::SUPER)
+    {
+      const scanner::Token& name = GetCurrentTokenAndIncremetIterator();
+      ExpectToken(scanner::Token::DOT, ".");
+      const scanner::Token& method = ExpectToken(scanner::Token::IDENTIFIER, "method name");
+      return std::make_shared<Super>(std::make_shared<scanner::Token>(name),
+                                     std::make_shared<scanner::Token>(method),
+                                     id_++);
     }
 
     if (GetCurrentToken().GetType() == scanner::Token::IDENTIFIER)

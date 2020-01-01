@@ -18,19 +18,24 @@ class ClassImpl: public common::IClass
 public:
   using Methods = std::unordered_map<std::string, std::shared_ptr<common::Object>>;
 
-  ClassImpl(const std::string& name, Methods& methods)
+  ClassImpl(const std::string& name, common::Object super, Methods& methods)
     : kName(name),
-      methods_(std::move(methods))
+      methods_(std::move(methods)),
+      super_(super)
   {}
 
   std::shared_ptr<common::Object> FindMethod(const std::string& name) const override
   {
     auto it = methods_.find(name);
-    if (it == methods_.end())
+    if (it != methods_.end())
     {
-      return nullptr;
+      return it->second;
     }
-    return it->second;
+    if (super_.GetType() == common::Object::CLASS)
+    {
+      return super_.AsClass().FindMethod(name);
+    }
+    return nullptr;
   }
 
   std::string GetName() const override
@@ -69,6 +74,7 @@ private:
   const std::string kName;
   Methods methods_;
   std::weak_ptr<ClassImpl> self_;
+  common::Object super_;
 };
 
 } // namespace interpreter

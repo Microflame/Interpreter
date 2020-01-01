@@ -22,6 +22,7 @@ using Ptr = std::shared_ptr<T>;
 class Assign;
 class Get;
 class This;
+class Super;
 class Set;
 class Binary;
 class Logical;
@@ -37,6 +38,7 @@ public:
   virtual void Visit(const Assign&) = 0;
   virtual void Visit(const Get&) = 0;
   virtual void Visit(const This&) = 0;
+  virtual void Visit(const Super&) = 0;
   virtual void Visit(const Set&) = 0;
   virtual void Visit(const Binary&) = 0;
   virtual void Visit(const Logical&) = 0;
@@ -79,6 +81,21 @@ public:
   void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
 
   Ptr<scanner::Token> name_;
+};
+
+class Super: public Expr
+{
+public:
+  Super(Ptr<scanner::Token> name, Ptr<scanner::Token> method, size_t id)
+    : Expr(id),
+      name_(name),
+      method_(method)
+  {}
+
+  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
+
+  Ptr<scanner::Token> name_;
+  Ptr<scanner::Token> method_;
 };
 
 class Get: public Expr
