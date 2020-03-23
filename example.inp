@@ -1,3 +1,37 @@
+print("==== print() examples ====");
+
+print("This \"escaped_string\" contains \\");
+
+print(1 + 2 * 3 * (4 + 5) + 6);
+
+print("==== while loop example ====");
+
+var i = 0;
+while (i < 5)
+{
+  i = i + 1;
+  print("i = " + i + " / 5");
+}
+
+print("==== closure example ====");
+
+func makeCounter() {
+  var i = 0;
+  func count() {
+    i = i + 1;
+    return i;
+  }
+
+  return count;
+}
+
+var counter = makeCounter();
+print("counter result = " + counter());
+print("counter result = " + counter());
+print("counter result = " + counter());
+
+print("==== inheritance example ====");
+
 class A {
   method() {
     print("A method");
@@ -33,48 +67,3 @@ print(a);
   print(a);
 }
 */
-
-/*
-func makeCounter() {
-  var i = 0;
-  func count() {
-    i = i + 1;
-    print(i);
-  }
-
-  return count;
-}
-
-var counter = makeCounter();
-counter();
-counter();
-*/
-
-/*
-var i = 0;
-while (i < 5)
-{
-  print i;
-  i = i + 1;
-}
-
-print "now i is";
-
-print i;
-*/
-
-//print "Should be 1:";
-//print 1 + 2 * 3 * (4 + 5) + 6 == 61;
-
-//print "Should be 0:";
-//print 1 + 2 * 3 * (4 + 5) + 6 == 62;
-
-/*var variable:Int = 00123;
-var str1 = "String";
-var escaped_string = "This \"escaped_string\" contains \\";
-var float = 123.;
-var float = .123;
-var float = 123e1;
-var float = 123e+12;
-var float = 123.e-2;
-var float = 123e;*/
