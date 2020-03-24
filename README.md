@@ -18,7 +18,7 @@ make
 ./src/Interp ../example.inp
 ```
 
-should result in result:
+should result in:
 
 ```
 ==== print() examples ====
