@@ -2,10 +2,6 @@
 
 #include <memory>
 #include <stdexcept>
-#include <type_traits>
-
-// #include "callable.h"
-// #include "iclass.h"
 
 namespace common
 {

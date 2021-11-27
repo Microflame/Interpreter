@@ -1,8 +1,8 @@
 #pragma once
 
-#include <istream>
 #include <sstream>
 #include <vector>
+#include <cstring>
 
 #include "token.h"
 #include "logger.h"
@@ -14,181 +14,218 @@ namespace scanner
 class Scanner
 {
 public:
-  Scanner(const std::string& source)
-    : kSource(source),
-      cur_(kSource.begin()),
-      log_(Logger::kWarning),
-      error_(false)
-  {
-    
-  }
+  Scanner() :
+    log_(Logger::kWarning)
+  {}
 
-  std::vector<Token> GetTokens()
+  std::vector<Token> GetTokens(const std::string& source, TokenSpawner* token_spawner)
   {
+    token_spawner_ = token_spawner;
+    begin_ = source.data();
+    cur_ = source.data();
+    end_ = source.data() + source.size();
+    error_ = false;
+    is_at_bol_ = true;
+    indent_level_ = 0;
+    current_indent_level_ = 0;
+    current_indent_col_ = 0;
+    indent_stack_ = {};
+
     log_(Logger::kDebug, "Scanner started.");
 
     std::vector<Token> result;
-    cur_ = kSource.begin();
 
     while (true)
     {
       Token tok = GetNextToken();
-      if (tok.GetType() == Token::EMPTY_TOKEN || tok.GetType() == Token::COMMENT)
+      if (tok.GetType() == TokenType::EMPTY_TOKEN || tok.GetType() == TokenType::COMMENT)
       {
         continue;
       }
       result.push_back(tok);
-      if (tok.GetType() == Token::END_OF_FILE)
+      if (tok.GetType() == TokenType::END_OF_FILE)
       {
         break;
       }
     }
 
     log_(Logger::kDebug, "Scanner finished with %d non empty tokens.", result.size());
-
     return result;
   }
 
   bool HasError() { return error_; }
 
 private:
-  const std::string& kSource;
+  TokenSpawner* token_spawner_;
 
-  std::string::const_iterator cur_;
+  const char* begin_;
+  const char* cur_;
+  const char* end_;
 
-  Token cur_token_;
+  TokenType cur_token_type_;
+  size_t cur_token_length_;
+  struct
+  {
+    int64_t int_;
+    double fp_;
+    std::string str_;
+  } token_content_;
 
   Logger log_;
-
   bool error_;
+  bool is_at_bol_;
+  
+  int indent_level_;
+  int current_indent_level_;
+  int current_indent_col_;
+  std::vector<int> indent_stack_;
 
   Token GetNextToken()
   {
-    if (cur_ == kSource.end())
+    cur_token_type_ = TokenType::BAD_TOKEN;
+    cur_token_length_ = 0;
+
+    if (cur_ == end_)
     {
-      return ExtractToken(Token::END_OF_FILE, 0);
+      //TODO: Emit UNINDENT's
+      return ExtractToken(TokenType::END_OF_FILE, 0);
     }
 
-    cur_token_ = Token();
+    if (is_at_bol_)
+    {
+      is_at_bol_ = false;
+      int line_indent = 0;
+      size_t i = 0;
+      size_t remaining = Remaining();
+      while (i < remaining && (cur_[i] == ' ' || cur_[i] == '\t'))
+      {
+        line_indent += 1;
+        i += 1;
+      }
 
-    TryGetKeywordToken("and", Token::AND);
-    TryGetKeywordToken("class", Token::CLASS);
-    TryGetKeywordToken("else", Token::ELSE);
-    TryGetKeywordToken("for", Token::FOR);
-    TryGetKeywordToken("func", Token::FUNC);
-    TryGetKeywordToken("if", Token::IF);
-    TryGetKeywordToken("none", Token::NONE);
-    TryGetKeywordToken("or", Token::OR);
-    // TryGetKeywordToken("print", Token::PRINT);
-    TryGetKeywordToken("super", Token::SUPER);
-    TryGetKeywordToken("this", Token::THIS);
-    TryGetKeywordToken("var", Token::VAR);
-    TryGetKeywordToken("return", Token::RETURN);
-    TryGetKeywordToken("while", Token::WHILE);
-    TryGetKeywordToken("Int", Token::INT_TYPE);
-    TryGetKeywordToken("Float", Token::FLOAT_TYPE);
+      if (line_indent > current_indent_col_)
+      {
+        indent_stack_.push_back(line_indent - current_indent_col_);
+        current_indent_col_ = line_indent;
+        current_indent_level_ += 1;
+      }
+      while (line_indent < current_indent_col_ && indent_stack_.size())
+      {
+        current_indent_col_ -= indent_stack_.back();
+        indent_stack_.pop_back();
+        current_indent_level_ -= 1;
+      }
+      if (line_indent != current_indent_col_)
+      {
+        auto pos = util::string_tools::GetPosition(begin_, GetOffsetFromSrcStart());
+        ReportError("[SCANNER]:%d:%d: indentation error.", pos.line, pos.column);
+        return ExtractToken(TokenType::BAD_TOKEN, i);
+      }
+    }
 
-    TryGetBoolToken();
+    while (current_indent_level_ != indent_level_)
+    {
+      if (current_indent_level_ > indent_level_)
+      {
+        indent_level_ += 1;
+        return ExtractToken(TokenType::INDENT, 0);
+      }
+      else
+      {
+        indent_level_ -= 1;
+        return ExtractToken(TokenType::UNINDENT, 0);
+      }
+    }
+
+    TryGetKeywordToken("and", TokenType::AND);
+    TryGetKeywordToken("or", TokenType::OR);
+    TryGetKeywordToken("not", TokenType::NOT);
+    TryGetKeywordToken("if", TokenType::IF);
+    TryGetKeywordToken("else", TokenType::ELSE);
+    TryGetKeywordToken("True", TokenType::TRUE);
+    TryGetKeywordToken("False", TokenType::FALSE);
+    TryGetKeywordToken("class", TokenType::CLASS);
+    TryGetKeywordToken("def", TokenType::DEF);
+    TryGetKeywordToken("return", TokenType::RETURN);
+    TryGetKeywordToken("for", TokenType::FOR);
+    TryGetKeywordToken("in", TokenType::IN);
+    TryGetKeywordToken("while", TokenType::WHILE);
+    TryGetKeywordToken("none", TokenType::NONE);
+    TryGetKeywordToken("super", TokenType::SUPER);
+    TryGetKeywordToken("self", TokenType::THIS);
+
     TryGetIntToken();
     TryGetFloatToken();
     TryGetIdentifierToken();
     TryGetStringToken();
+    // TryGetMultilineStringToken();
+    TryGetCommentToken();
 
-    if (cur_token_.Length())
+    if (cur_token_length_)
     {
-      return ExtractToken(cur_token_);
+      return ExtractCurrentToken();
     }
 
     switch (*cur_)
     {
       case '\n':
+        is_at_bol_ = true;
       case ' ':
       case '\t':
       case '\r':
-      case '\v': // Vertical tab
-      case '\f': // Formfeed
-        return ExtractToken(Token::EMPTY_TOKEN, 1);
-      case '(': return ExtractToken(Token::LEFT_PAREN, 1);
-      case ')': return ExtractToken(Token::RIGHT_PAREN, 1);
-      case '{': return ExtractToken(Token::LEFT_BRACE, 1);
-      case '}': return ExtractToken(Token::RIGHT_BRACE, 1);
-      case ',': return ExtractToken(Token::COMMA, 1);
-      case '.': return ExtractToken(Token::DOT, 1);
-      case '+': return ExtractToken(Token::PLUS, 1);
-      case '-': return ExtractToken(Token::MINUS, 1);
-      case ':': return ExtractToken(Token::COLON, 1);
-      case ';': return ExtractToken(Token::SEMICOLON, 1);
-      case '*': return ExtractToken(Token::STAR, 1);
+      case '\v':
+      case '\f':
+        return ExtractToken(TokenType::EMPTY_TOKEN, 1);
+      case '(': return ExtractToken(TokenType::LEFT_PAREN, 1);
+      case ')': return ExtractToken(TokenType::RIGHT_PAREN, 1);
+      case '{': return ExtractToken(TokenType::LEFT_BRACE, 1);
+      case '}': return ExtractToken(TokenType::RIGHT_BRACE, 1);
+      case '[': return ExtractToken(TokenType::LEFT_BRAKET, 1);
+      case ']': return ExtractToken(TokenType::RIGHT_BRAKET, 1);
+      case ',': return ExtractToken(TokenType::COMMA, 1);
+      case '.': return ExtractToken(TokenType::DOT, 1);
+      case '+': return ExtractToken(TokenType::PLUS, 1);
+      case '-': return ExtractToken(TokenType::MINUS, 1);
+      case ':': return ExtractToken(TokenType::COLON, 1);
+      case ';': return ExtractToken(TokenType::SEMICOLON, 1);
+      case '*': return ExtractToken(TokenType::STAR, 1);
+      case '/': return ExtractToken(TokenType::SLASH, 1);
       // Double char op
       case '!':
-        return MatchChar(1, '=') ? ExtractToken(Token::BANG_EQUAL, 2) : ExtractToken(Token::BANG, 1);
+        return MatchChar(1, '=') ? ExtractToken(TokenType::BANG_EQUAL, 2) : ExtractToken(TokenType::BANG, 1);
       case '=':
-        return MatchChar(1, '=') ? ExtractToken(Token::EQUAL_EQUAL, 2) : ExtractToken(Token::EQUAL, 1);
+        return MatchChar(1, '=') ? ExtractToken(TokenType::EQUAL_EQUAL, 2) : ExtractToken(TokenType::EQUAL, 1);
       case '>':
-        return MatchChar(1, '=') ? ExtractToken(Token::GREATER_EQUAL, 2) : ExtractToken(Token::GREATER, 1);
+        return MatchChar(1, '=') ? ExtractToken(TokenType::GREATER_EQUAL, 2) : ExtractToken(TokenType::GREATER, 1);
       case '<':
-        return MatchChar(1, '=') ? ExtractToken(Token::LESS_EQUAL, 2) : ExtractToken(Token::LESS, 1);
-      // Comments
-      case '/':
-        if (MatchChar(1, '/'))
-        {
-          size_t terminator_pos = kSource.find('\n', GetOffset() + 2);
-          size_t end_pos = terminator_pos != std::string::npos ? terminator_pos + 1 : kSource.size();
-          return ExtractToken(Token::COMMENT, end_pos - GetOffset());
-        }
-        else if (MatchChar(1, '*'))
-        {
-          size_t terminator_pos = kSource.find("*/", GetOffset() + 2);
-          size_t end_pos = terminator_pos != std::string::npos ? terminator_pos + 2 : kSource.size();
-          return ExtractToken(Token::COMMENT, end_pos - GetOffset());
-        }
-        else
-        {
-          return ExtractToken(Token::SLASH, 1);
-        }
+        return MatchChar(1, '=') ? ExtractToken(TokenType::LESS_EQUAL, 2) : ExtractToken(TokenType::LESS, 1);
       default:
-        auto pos = util::string_tools::GetPosition(kSource, GetOffset());
-        ReportError("[SCANNER]:%d:%d: bad token.", pos.first, pos.second);
-        return ExtractToken(Token::BAD_TOKEN, 1);
+        auto pos = util::string_tools::GetPosition(begin_, GetOffsetFromSrcStart());
+        ReportError("[SCANNER]:%d:%d: bad token.", pos.line, pos.column);
+        return ExtractToken(TokenType::BAD_TOKEN, 1);
     }
   }
 
-  void UpdateCurrentToken(Token::Type type, size_t size)
+  void UpdateCurrentToken(TokenType type, size_t size)
   {
-    if (size > cur_token_.Length())
+    if (size > cur_token_length_)
     {
-      cur_token_ = Token(type, &*cur_, size);
+      cur_token_type_ = type;
+      cur_token_length_ = size;
     }
   }
 
-  void UpdateCurrentToken(const Token& tok)
-  {
-    if (tok.Length() > cur_token_.Length())
-    {
-      cur_token_ = tok;
-    }
-  }
-
-  void TryGetKeywordToken(const std::string& target, Token::Type type)
+  void TryGetKeywordToken(const std::string& target, TokenType type)
   {
     size_t token_len = target.size();
-    if (MatchStr(target))
+    if (token_len < cur_token_length_)
     {
-      UpdateCurrentToken(type, token_len);
+      return;
     }
-  }
-
-  void TryGetBoolToken()
-  {
-    if (MatchStr("true"))
+    if (Remaining() >= token_len && memcmp(target.data(), cur_, token_len) == 0)
     {
-      Token tok(Token::TRUE, &*cur_, 4, true);
-      UpdateCurrentToken(tok);
-    }
-    else if (MatchStr("false"))
-    {
-      Token tok(Token::FALSE, &*cur_, 5, false);
-      UpdateCurrentToken(tok);
+      cur_token_type_ = type;
+      cur_token_length_ = token_len;
     }
   }
 
@@ -203,8 +240,8 @@ private:
     }
 
     int64_t value = std::stoll(std::string(cur_, cur_ + i));
-    Token tok(Token::INT_LITERAL, &*cur_, i, value);
-    UpdateCurrentToken(tok);
+    token_content_.int_ = value;
+    UpdateCurrentToken(TokenType::INT_LITERAL, i);
   }
 
   void TryGetFloatToken()
@@ -248,8 +285,8 @@ private:
       if (has_dot)
       {
         double value = std::stod(std::string(cur_, cur_ + i));
-        Token tok(Token::FLOAT_LITERAL, &*cur_, i, value);
-        UpdateCurrentToken(tok);
+        token_content_.fp_ = value;
+        UpdateCurrentToken(TokenType::FLOAT_LITERAL, i);
       }
       return;
     }
@@ -265,8 +302,8 @@ private:
     if (!IsDigit(cur_[i]))
     {
       double value = std::stod(std::string(cur_, cur_ + mantissa));
-      Token tok(Token::FLOAT_LITERAL, &*cur_, mantissa, value);
-      UpdateCurrentToken(tok);
+      token_content_.fp_ = value;
+      UpdateCurrentToken(TokenType::FLOAT_LITERAL, mantissa);
       return;
     }
 
@@ -275,8 +312,8 @@ private:
       ++i;
     }
     double value = std::stod(std::string(cur_, cur_ + i));
-    Token tok(Token::FLOAT_LITERAL, &*cur_, i, value);
-    UpdateCurrentToken(tok);
+    token_content_.fp_ = value;
+    UpdateCurrentToken(TokenType::FLOAT_LITERAL, i);
   }
 
   void TryGetIdentifierToken()
@@ -291,20 +328,47 @@ private:
     while (IsAlphanum(cur_[i])) { ++i; }
 
 
-    std::string value(cur_, cur_ + i);
-    Token tok(Token::IDENTIFIER, &*cur_, i, value);
-    UpdateCurrentToken(tok);
+    token_content_.str_ = std::string(cur_, cur_ + i);
+    UpdateCurrentToken(TokenType::IDENTIFIER, i);
+  }
+
+  void TryGetCommentToken()
+  {
+    if (*cur_ != '#') return;
+    size_t remaining = Remaining();
+    size_t i = 1;
+    while (i < remaining && cur_[i] != '\n')
+    {
+      ++i;
+    }
+    token_content_.str_ = std::string(cur_ + 1, cur_ + i);
+    UpdateCurrentToken(TokenType::COMMENT, i);
   }
 
   void TryGetStringToken()
   {
-    if (*cur_ != '"') return;
+    char quote = '\0';
+    if (*cur_ == '"' || *cur_ == '\'')
+    {
+      quote = *cur_;
+    }
+    else
+    {
+      return;
+    }
 
     std::string result;
 
     bool escape = false;
     for (size_t i = 1; i < Remaining(); ++i)
     {
+      if (cur_[i] == '\n')
+      {
+        auto pos = util::string_tools::GetPosition(begin_, GetOffsetFromSrcStart());
+        ReportError("[SCANNER]:%d:%d: unexpected end of line inside of string.", pos.line, pos.column);
+        UpdateCurrentToken(TokenType::BAD_TOKEN, i);
+        return;
+      }
       if (escape)
       {
         escape = false;
@@ -336,58 +400,56 @@ private:
         escape = true;
         continue;
       }
-      if (cur_[i] == '"')
+      if (cur_[i] == quote)
       {
-        Token tok(Token::STRING, &*cur_, i + 1, result);
-        UpdateCurrentToken(tok);
-        return;
-      }
-      if (cur_[i] == '\n')
-      {
-        auto pos = util::string_tools::GetPosition(kSource, GetOffset());
-        ReportError("[SCANNER]:%d:%d: unexpected end of line inside of string.", pos.first, pos.second);
-        UpdateCurrentToken(Token::BAD_TOKEN, i);
+        token_content_.str_ = std::move(result);
+        UpdateCurrentToken(TokenType::STRING, i + 1);
         return;
       }
       result += cur_[i];
     }
-    auto pos = util::string_tools::GetPosition(kSource, GetOffset());
-    ReportError("[SCANNER]:%d:%d: invalid symbol.", pos.first, pos.second);
-    UpdateCurrentToken(Token::BAD_TOKEN, Remaining());
-  }
-
-  bool MatchStr(const std::string& target)
-  {
-    return (target.size() <= Remaining()) && (kSource.compare(GetOffset(), target.size(), target) == 0);
+    auto pos = util::string_tools::GetPosition(begin_, GetOffsetFromSrcStart());
+    ReportError("[SCANNER]:%d:%d: invalid symbol.", pos.line, pos.column);
+    UpdateCurrentToken(TokenType::BAD_TOKEN, Remaining());
   }
 
   bool MatchChar(size_t offset, char chr)
   {
-    std::string::const_iterator target = cur_ + offset;
-    return (target < kSource.end()) && (*target == chr);
+    const char* s = cur_ + offset;
+    return (s < end_) && (*s == chr);
   }
 
-  Token ExtractToken(Token::Type type, size_t size)
+  Token ExtractCurrentToken()
   {
-    Token tok(type, &*cur_, size);
+    return ExtractToken(cur_token_type_, cur_token_length_);
+  }
+
+  Token ExtractToken(TokenType type, size_t size)
+  {
     cur_ += size;
-    return tok;
+    switch (type)
+    {
+      case TokenType::COMMENT:
+      case TokenType::STRING:
+      case TokenType::IDENTIFIER:
+        return token_spawner_->Spawn(type, std::move(token_content_.str_));
+      case TokenType::INT_LITERAL:
+        return token_spawner_->Spawn(type, token_content_.int_);
+      case TokenType::FLOAT_LITERAL:
+        return token_spawner_->Spawn(type, token_content_.fp_);
+      default:
+        return token_spawner_->Spawn(type);
+    }
   }
 
-  Token ExtractToken(Token token)
+  size_t GetOffsetFromSrcStart()
   {
-    cur_ += token.Length();
-    return token;
-  }
-
-  size_t GetOffset()
-  {
-    return cur_ - kSource.begin();
+    return cur_ - begin_;
   }
 
   size_t Remaining()
   {
-    return kSource.end() - cur_;
+    return end_ - cur_;
   }
 
   bool IsInRange(char chr, char lo, char hi)

@@ -1,14 +1,9 @@
-# fib(40) runs in ~ 23 s.
-
-import time
-import sys
+# python3 fib(40) runs in ~ 23 s.
+# pypy3 fib(40) runs in ~ 1.9 s.
 
 def fib(n):
     if n < 2:
         return n
     return fib(n - 1) + fib(n - 2)
 
-s = time.time()
 print(fib(40))
-e = time.time()
-print((e - s) * 1000)

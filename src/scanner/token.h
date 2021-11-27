@@ -1,11 +1,12 @@
 #pragma once
 
-#include <memory>
 #include <string>
 #include <sstream>
 
 #include "util/string_tools.h"
-#include "common/object.h"
+
+namespace scanner
+{
 
 
 #define INTERP_FORALL_TOKEN_TYPES(_) \
@@ -14,6 +15,8 @@
   _(RIGHT_PAREN) \
   _(LEFT_BRACE) \
   _(RIGHT_BRACE) \
+  _(LEFT_BRAKET) \
+  _(RIGHT_BRAKET) \
   _(COMMA) \
   _(DOT) \
   _(MINUS) \
@@ -36,178 +39,162 @@
   _(STRING) \
   _(INT_LITERAL) \
   _(FLOAT_LITERAL) \
-  /* Types. */ \
-  _(INT_TYPE) \
-  _(FLOAT_TYPE) \
   /* Keywords. */ \
   _(AND) \
-  _(CLASS) \
-  _(ELSE) \
-  _(FALSE) \
-  _(FUNC) \
-  _(FOR) \
-  _(IF) \
-  _(NONE) \
   _(OR) \
-  _(PRINT) \
+  _(NOT) \
+  _(IF) \
+  _(ELSE) \
+  _(TRUE) \
+  _(FALSE) \
+  _(CLASS) \
+  _(DEF) \
   _(RETURN) \
+  _(FOR) \
+  _(IN) \
+  _(WHILE) \
+  _(NONE) \
   _(SUPER) \
   _(THIS) \
-  _(TRUE) \
-  _(VAR) \
-  _(WHILE) \
-  _(END_OF_FILE) \
   /* Non lang. */ \
+  _(INDENT) \
+  _(UNINDENT) \
+  _(END_OF_FILE) \
   _(EMPTY_TOKEN) \
   _(COMMENT) \
   _(BAD_TOKEN)
 
-namespace scanner
-{
 
-class Token
+using TokenId = int32_t;
+using TokenStrId = int32_t;
+
+enum class TokenType : uint8_t
 {
-public:
-  enum Type
-  {
 #define INTERP_PUT_WITH_COMMA(_) _,
-    INTERP_FORALL_TOKEN_TYPES(INTERP_PUT_WITH_COMMA)
+  INTERP_FORALL_TOKEN_TYPES(INTERP_PUT_WITH_COMMA)
 #undef INTERP_PUT_WITH_COMMA
-  };
+};
 
-  explicit Token(Type type, const char* begin, size_t size, bool content)
-    : object_(common::MakeBool(content)),
-      type_(type),
-      begin_(begin),
-      size_(size)
-  {}
+struct TokenMeta
+{
+  TokenType type_;
+  TokenId id_;
+};
 
-  explicit Token(Type type, const char* begin, size_t size, int64_t content)
-    : object_(common::MakeInt(content)),
-      type_(type),
-      begin_(begin),
-      size_(size)
-  {}
+union TokenData
+{
+  double fp_;
+  int64_t int_;
+  TokenStrId str_idx_;
+};
 
-  explicit Token(Type type, const char* begin, size_t size, double content)
-    : object_(common::MakeFloat(content)),
-      type_(type),
-      begin_(begin),
-      size_(size)
-  {}
+struct Token
+{
+  TokenMeta meta_;
+  TokenData data_;
 
-  explicit Token(Type type, const char* begin, size_t size, std::string content)
-    : object_(common::MakeString(content)),
-      type_(type),
-      begin_(begin),
-      size_(size)
-  {}
-
-  template <typename T>
-  Token(Type type, const char* begin, size_t size, T content) = delete;
-
-  Token(Type type, const char* begin, size_t size)
-    : object_(common::MakeNone()),
-      type_(type),
-      begin_(begin),
-      size_(size)
-  {}
-
-  Token() : Token(EMPTY_TOKEN, nullptr, 0) {}
-
-  std::string ToRawString() const
+  const char* GetTypeName() const
   {
-    return std::string(begin_, begin_ + size_);
-  }
-
-  std::string GetTypeName() const
-  {
-    switch (type_)
+    switch (meta_.type_)
     {
-#define INTERP_PUT_TOKEN_NAME(_) case _: { return #_; }
+#define INTERP_PUT_TOKEN_NAME(_) case TokenType::_: { return #_; }
       INTERP_FORALL_TOKEN_TYPES(INTERP_PUT_TOKEN_NAME)
 #undef INTERP_PUT_TOKEN_NAME
       default:
-        return "BAD TOKEN!";
+        return "BAD TOKEN!"; //TODO: throw
     }
   }
 
-  std::string ToString() const
+  TokenType GetType() const { return meta_.type_; }
+};
+
+class TokenSpawner
+{
+public:
+  TokenSpawner() :
+    cur_token_id_(0),
+    str_buffer_()
+  {}
+
+  Token Spawn(TokenType type, std::string&& str)
+  {
+    Token t;
+    t.meta_ = MakeTokenMeta(type);
+    t.data_.str_idx_ = StoreString(std::move(str));
+    return t;
+  }
+
+  Token Spawn(TokenType type, int64_t num)
+  {
+    Token t;
+    t.meta_ = MakeTokenMeta(type);
+    t.data_.int_ = num;
+    return t;
+  }
+
+  Token Spawn(TokenType type, double num)
+  {
+    Token t;
+    t.meta_ = MakeTokenMeta(type);
+    t.data_.fp_ = num;
+    return t;
+  }
+
+  Token Spawn(TokenType type)
+  {
+    Token t;
+    t.meta_ = MakeTokenMeta(type);
+    return t;
+  }
+
+
+  std::string ToString(Token token) const
   {
     std::stringstream ss;
 
-    ss << GetTypeName();
+    ss << token.GetTypeName();
 
-    ss << "(\"";
+    ss << "(";
 
-    switch (type_)
+    switch (token.meta_.type_)
     {
-      case INT_LITERAL:
-        ss << std::to_string(object_.AsInt());
+      case TokenType::INT_LITERAL:
+        ss << std::to_string(token.data_.int_);
         break;
-      case FLOAT_LITERAL:
-        ss << std::to_string(object_.AsFloat());
+      case TokenType::FLOAT_LITERAL:
+        ss << std::to_string(token.data_.fp_);
         break;
-      case IDENTIFIER:
-      case STRING:
-        ss  << object_.AsString();
+      case TokenType::COMMENT:
+      case TokenType::STRING:
+      case TokenType::IDENTIFIER:
+        ss << "\"" << str_buffer_[token.data_.str_idx_] << "\"";
         break;
       default:
-        ss << std::string(begin_, begin_ + size_);
+        break;
     }
-    
-    ss << "\")";
+
+    ss << ")";
     return ss.str();
   }
 
-  size_t Length() const { return size_; }
 
-  Type GetType() const { return type_; }
-
-  bool OneOf(const std::vector<Type>& types)
+  TokenMeta MakeTokenMeta(TokenType type)
   {
-    for (Type t: types)
-    {
-      if (type_ == t)
-      {
-        return true;
-      }
-    }
-    return false;
+    return {type, cur_token_id_++};
   }
 
-  template <typename ... Args>
-  bool OneOf(Type first, Args ... other) const
+  TokenStrId StoreString(std::string&& str)
   {
-    return (type_ == first) || OneOf(other...);
-  }
-
-  bool OneOf(Type first) const
-  {
-    return type_ == first;
-  }
-
-  std::pair<size_t, size_t> GetPosition(const std::string& source) const
-  {
-    return util::string_tools::GetPosition(source, begin_ - source.c_str());
-  }
-
-  common::Object& GetObject()
-  {
-    return object_;
-  }
-
-  const common::Object& GetObject() const
-  {
-    return object_;
+    str_buffer_.emplace_back(std::move(str));
+    return str_buffer_.size() - 1;
   }
 
 private:
-  common::Object object_;
-  Type type_;
-  const char* begin_;
-  size_t size_;
+  TokenId cur_token_id_;
+
+  std::vector<std::string> str_buffer_;
 };
 
-  
+#undef INTERP_FORALL_TOKEN_TYPES
+
 } // scanner

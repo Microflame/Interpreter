@@ -1,13 +1,18 @@
 #pragma once
 
-#include <utility>
-#include <cstddef>
 #include <string>
 
 namespace util {
+
+struct Position
+{
+    size_t line;
+    size_t column;
+};
+
 namespace string_tools {
 
-std::pair<size_t, size_t> GetPosition(const std::string& source, size_t idx);
+Position GetPosition(const char* s, size_t idx);
 
 } // string_tools
 } // util

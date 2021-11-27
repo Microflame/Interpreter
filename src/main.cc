@@ -4,14 +4,13 @@
 
 
 #include "scanner/scanner.h"
-#include "parser/expr.h"
-#include "parser/stmt.h"
-#include "parser/parser.h"
-// #include "experimental/ast_printer.h"
-#include "resolver/resolver.h"
-#include "interpreter/interpreter.h"
+// #include "parser/expr.h"
+// #include "parser/stmt.h"
+// #include "parser/parser.h"
+// #include "resolver/resolver.h"
+// #include "interpreter/interpreter.h"
 
-int ReadFile(const char* path)
+std::string ReadFile(const char* path)
 {
   std::ifstream fin(path);
   if (!fin.is_open())
@@ -20,31 +19,42 @@ int ReadFile(const char* path)
   }
 
   std::string source((std::istreambuf_iterator<char>(fin)), std::istreambuf_iterator<char>());
+  return source;
+}
 
-  scanner::Scanner scanner(source);
-  std::vector<scanner::Token> tokens = scanner.GetTokens();
+int ExecuteFile(const char* path)
+{
+  std::string source = ReadFile(path);
+
+  scanner::Scanner scanner;
+  scanner::TokenSpawner token_spawner;
+  std::vector<scanner::Token> tokens = scanner.GetTokens(source, &token_spawner);
 
   if (scanner.HasError())
   {
+    std::cerr << "Scanner error" << "\n";
     return 1;
   }
 
-  parser::Parser parser(source, tokens);
-  std::vector<std::shared_ptr<parser::stmt::Stmt>> statements = parser.Parse();
-
-  if (parser.HasError())
+  for (auto t: tokens)
   {
-    return 1;
+    std::cout << token_spawner.ToString(t) << '\n';
   }
 
-  // std::cout << AstPrinter::GetValue(*expr) << "\n";
+  // parser::Parser parser(source, tokens);
+  // std::vector<std::shared_ptr<parser::stmt::Stmt>> statements = parser.Parse();
 
-  interpreter::Interpreter interpreter;
-  resolver::Resolver resolver(interpreter);
+  // if (parser.HasError())
+  // {
+  //   return 1;
+  // }
 
-  resolver.Resolve(statements);
+  // interpreter::Interpreter interpreter;
+  // resolver::Resolver resolver(interpreter);
 
-  interpreter.Interpret(statements);
+  // resolver.Resolve(statements);
+
+  // interpreter.Interpret(statements);
 
   return 0;
 }
@@ -59,11 +69,11 @@ int main(int argc, const char* argv[])
   int retval = 0;
   if (argc > 1)
   {
-    retval = ReadFile(argv[1]);
+    retval = ExecuteFile(argv[1]);
   }
   else
   {
-    retval = ReadFile("./example.inp");
+    retval = ExecuteFile("./example.inp");
     retval = RunPrompt();
   }
   return retval;

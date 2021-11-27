@@ -1,21 +1,25 @@
 #include "string_tools.h"
 
+#include <cstring>
+
 namespace util {
 namespace string_tools {
 
-std::pair<size_t, size_t> GetPosition(const std::string& source, size_t idx)
+Position GetPosition(const char* s, size_t idx)
 {
   size_t line = 1;
-  size_t column = idx + 1;
-  size_t nl_idx = source.find('\n');
-  while ((nl_idx != std::string::npos) && ((nl_idx + 1) < source.size()) && (nl_idx < idx))
+  size_t line_start_idx = 0;
+
+  for (size_t i = 0; i < idx; ++i)
   {
-    ++line;
-    column = idx - nl_idx;
-    nl_idx = source.find('\n', nl_idx + 1);
+    if (s[i] == '\n')
+    {
+      line += 1;
+      line_start_idx = i + 1;
+    }
   }
 
-  return {line, column};
+  return {line, idx - line_start_idx + 1};
 }
 
 } // string_tools
