@@ -10,6 +10,9 @@
 // #include "resolver/resolver.h"
 // #include "interpreter/interpreter.h"
 
+namespace ilang
+{
+
 std::string ReadFile(const char* path)
 {
   std::ifstream fin(path);
@@ -26,9 +29,9 @@ int ExecuteFile(const char* path)
 {
   std::string source = ReadFile(path);
 
-  scanner::Scanner scanner;
-  scanner::TokenSpawner token_spawner;
-  std::vector<scanner::Token> tokens = scanner.GetTokens(source, &token_spawner);
+  Scanner scanner;
+  TokenSpawner token_spawner;
+  std::vector<Token> tokens = scanner.GetTokens(source, &token_spawner);
 
   if (scanner.HasError())
   {
@@ -36,19 +39,26 @@ int ExecuteFile(const char* path)
     return 1;
   }
 
-  for (auto t: tokens)
+  // for (auto t: tokens)
+  // {
+  //   std::cout << token_spawner.ToString(t) << '\n';
+  // }
+
+
+  Parser parser(source, tokens);
+  std::vector<const Stmt*> statements = parser.Parse();
+
+  if (parser.HasError())
   {
-    std::cout << token_spawner.ToString(t) << '\n';
+    return 1;
+  }
+
+  for (const Stmt* stmt: statements)
+  {
+    std::cout << StmtTypeToString(stmt->type_) << '\n';
   }
 
 
-  // parser::Parser parser(source, tokens);
-  // std::vector<std::shared_ptr<parser::Stmt>> statements = parser.Parse();
-
-  // if (parser.HasError())
-  // {
-  //   return 1;
-  // }
 
   // interpreter::Interpreter interpreter;
   // resolver::Resolver resolver(interpreter);
@@ -60,6 +70,10 @@ int ExecuteFile(const char* path)
   return 0;
 }
 
+} // namespace ilang
+
+
+
 int RunPrompt()
 {
   return 1;
@@ -70,11 +84,11 @@ int main(int argc, const char* argv[])
   int retval = 0;
   if (argc > 1)
   {
-    retval = ExecuteFile(argv[1]);
+    retval = ilang::ExecuteFile(argv[1]);
   }
   else
   {
-    retval = ExecuteFile("./example.inp");
+    retval = ilang::ExecuteFile("./example.inp");
     retval = RunPrompt();
   }
   return retval;

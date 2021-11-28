@@ -8,7 +8,7 @@
 #include "logger.h"
 #include "util/string_tools.h"
 
-namespace scanner
+namespace ilang
 {
 
 class Scanner
@@ -35,7 +35,7 @@ public:
 
     std::vector<Token> result;
 
-    while (true)
+    while (!IsAtEOF())
     {
       Token tok = GetNextToken();
       if (tok.GetType() == TokenType::EMPTY_TOKEN || tok.GetType() == TokenType::COMMENT)
@@ -43,11 +43,8 @@ public:
         continue;
       }
       result.push_back(tok);
-      if (tok.GetType() == TokenType::END_OF_FILE)
-      {
-        break;
-      }
     }
+    HandleEOF(&result);
 
     log_(Logger::kDebug, "Scanner finished with %d non empty tokens.", result.size());
     return result;
@@ -80,20 +77,23 @@ private:
   int current_indent_col_;
   std::vector<int> indent_stack_;
 
+  void HandleEOF(std::vector<Token>* tokens)
+  {
+    tokens->push_back(ExtractToken(TokenType::NEWLINE, 0));
+    while (indent_stack_.size())
+    {
+      indent_stack_.pop_back();
+      tokens->push_back(ExtractToken(TokenType::UNINDENT, 0));
+    }
+    tokens->push_back(ExtractToken(TokenType::END_OF_FILE, 0));
+  }
+
+  bool IsAtEOF() { return cur_ == end_; }
+
   Token GetNextToken()
   {
     cur_token_type_ = TokenType::BAD_TOKEN;
     cur_token_length_ = 0;
-
-    if (cur_ == end_)
-    {
-      if (indent_stack_.size())
-      {
-        indent_stack_.pop_back();
-        return ExtractToken(TokenType::UNINDENT, 0);
-      }
-      return ExtractToken(TokenType::END_OF_FILE, 0);
-    }
 
     if (is_at_bol_)
     {
@@ -179,6 +179,7 @@ private:
     {
       case '\n':
         is_at_bol_ = true;
+        return ExtractToken(TokenType::NEWLINE, 1);
       case ' ':
       case '\t':
       case '\r':
@@ -495,4 +496,4 @@ private:
   }
 };
 
-} // scanner
+} // ilang

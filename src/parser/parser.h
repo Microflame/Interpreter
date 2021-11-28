@@ -8,13 +8,15 @@
 #include "stmt.h"
 #include "util/string_tools.h"
 
-namespace parser
+namespace ilang
 {
+
+using StmtBlockId = int32_t;
 
 class Parser
 {
 public:
-  Parser(const std::string& source, const std::vector<scanner::Token>& tokens)
+  Parser(const std::string& source, const std::vector<Token>& tokens)
     : kSource(source),
       kTokens(tokens),
       log_(Logger::kDebug),
@@ -23,13 +25,17 @@ public:
   {}
 
 
-  std::vector<Ptr<Stmt>> Parse()
+  std::vector<const Stmt*> Parse()
   {
     cur_ = 0;
-    std::vector<Ptr<stmt::Stmt>> statements;
+    std::vector<const Stmt*> statements;
 
-    while (Remaining())
+    while (1)
     {
+      while (IsAtEndStatement())
+        ++cur_;
+      if (!Remaining())
+        break;
       statements.push_back(ParseDeclarationOrStatement());
     }
 
@@ -40,30 +46,159 @@ public:
 
 private:
   const std::string& kSource;
-  const std::vector<scanner::Token>& kTokens;
+  const std::vector<Token>& kTokens;
+  std::vector<Stmt> statements_;
+  std::vector<Expr> expressions_;
+  std::vector<std::vector<const Stmt*>> stmt_blocks_;
   size_t cur_;
   Logger log_;
   bool error_;
   size_t id_;
 
-  Ptr<stmt::Stmt> ParseDeclarationOrStatement()
+  const Stmt* AddStmt(Stmt stmt)
   {
+    // std::cout << "STMT: " << StmtTypeToString(stmt.type_) << std::endl;
+    statements_.push_back(stmt);
+    return &statements_.back();
+  }
+
+  const Stmt* AddDefStmt()
+  {
+    Stmt stmt = {Stmt::DEF};
+    stmt.def_ = {};
+    return AddStmt(stmt);
+  }
+
+  const Stmt* AddReturnStmt()
+  {
+    Stmt stmt = {Stmt::RETURN};
+    stmt.return_ = {};
+    return AddStmt(stmt);
+  }
+
+  const Stmt* AddWhileStmt()
+  {
+    Stmt stmt = {Stmt::WHILE};
+    stmt.while_ = {};
+    return AddStmt(stmt);
+  }
+
+  const Stmt* AddIfStmt()
+  {
+    Stmt stmt = {Stmt::IF};
+    stmt.if_ = {};
+    return AddStmt(stmt);
+  }
+
+  const Stmt* AddBlockStmt()
+  {
+    Stmt stmt = {Stmt::BLOCK};
+    stmt.block_ = {};
+    return AddStmt(stmt);
+  }
+
+  const Stmt* AddExpressionStmt()
+  {
+    Stmt stmt = {Stmt::EXPRESSION};
+    stmt.expression_ = {};
+    return AddStmt(stmt);
+  }
+
+
+  const Expr* AddExpr(Expr expr)
+  {
+    // std::cout << "EXPR: " << ExprTypeToString(expr.type_) << '\n';
+    expressions_.push_back(expr);
+    return &expressions_.back();
+  }
+
+  const Expr* AddAssignExpr()
+  {
+    Expr expr = {Expr::ASSIGN};
+    expr.assign_ = {{-1}};
+    return AddExpr(expr);
+  }
+
+  const Expr* AddSetExpr()
+  {
+    Expr expr = {Expr::SET};
+    expr.set_ = {{-1}};
+    return AddExpr(expr);
+  }
+
+  const Expr* AddLogicalExpr()
+  {
+    Expr expr = {Expr::LOGICAL};
+    expr.logical_ = {{-1}};
+    return AddExpr(expr);
+  }
+
+  const Expr* AddBinaryExpr()
+  {
+    Expr expr = {Expr::BINARY};
+    expr.binary_ = {{-1}};
+    return AddExpr(expr);
+  }
+
+  const Expr* AddUnaryExpr()
+  {
+    Expr expr = {Expr::UNARY};
+    expr.unary_ = {{-1}};
+    return AddExpr(expr);
+  }
+
+  const Expr* AddGetExpr()
+  {
+    Expr expr = {Expr::GET};
+    expr.get_ = {{-1}};
+    return AddExpr(expr);
+  }
+
+  const Expr* AddCallExpr()
+  {
+    Expr expr = {Expr::CALL};
+    expr.call_ = {{-1}};
+    return AddExpr(expr);
+  }
+
+  const Expr* AddLiteralExpr()
+  {
+    Expr expr = {Expr::LITERAL};
+    expr.literal_ = {{-1}};
+    return AddExpr(expr);
+  }
+
+  const Expr* AddThisExpr()
+  {
+    Expr expr = {Expr::THIS};
+    expr.this_ = {{-1}};
+    return AddExpr(expr);
+  }
+
+  const Expr* AddVariableExpr()
+  {
+    Expr expr = {Expr::VARIABLE};
+    expr.variable_ = {{-1}};
+    return AddExpr(expr);
+  }
+
+  const Stmt* ParseDeclarationOrStatement()
+  {
+    while (IsAtEndStatement())
+      ++cur_;
+
     try
     {
-      if (GetCurrentToken().GetType() == scanner::Token::VAR)
+      if (GetCurrentTokenType() == TokenType::DEF)
       {
         ++cur_;
-        return ParseVarDeclaration();
+        return ParseFunction();
       }
-      if (GetCurrentToken().GetType() == scanner::Token::FUNC)
+      if (GetCurrentTokenType() == TokenType::CLASS)
       {
         ++cur_;
-        return ParseFuncDeclaration();
-      }
-      if (GetCurrentToken().GetType() == scanner::Token::CLASS)
-      {
-        ++cur_;
-        return ParseClassDeclaration();
+        return nullptr;
+        //return ParseClassDeclaration();
       }
 
       return ParseStmt();
@@ -77,216 +212,149 @@ private:
     return ParseExpressionStmt();
   }
 
-  Ptr<stmt::Func> ParseFuncDeclaration()
+  const Stmt* ParseFunction()
   {
-    ExpectToken(scanner::Token::IDENTIFIER, "identifier", false);
-    Ptr<scanner::Token> name = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
+    Token name = ConsumeToken(TokenType::IDENTIFIER);
 
-    Ptr<std::vector<Ptr<scanner::Token>>> params = std::make_shared<std::vector<Ptr<scanner::Token>>>();
+    std::vector<Token> params;
 
-    ExpectToken(scanner::Token::LEFT_PAREN, "(");
-    if (GetCurrentToken().GetType() != scanner::Token::RIGHT_PAREN)
+    ConsumeToken(TokenType::LEFT_PAREN);
+    if (GetCurrentTokenType() != TokenType::RIGHT_PAREN)
     {
-      params->push_back(std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator()));
-      while (GetCurrentToken().GetType() == scanner::Token::COMMA)
+      params.push_back(GetCurrentTokenAndIncremetIterator());
+      while (GetCurrentTokenType() == TokenType::COMMA)
       {
         ++cur_;
-        params->push_back(std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator()));
+        params.push_back(GetCurrentTokenAndIncremetIterator());
       }
     }
-    ExpectToken(scanner::Token::RIGHT_PAREN, ")");
+    ConsumeToken(TokenType::RIGHT_PAREN);
+    ConsumeToken(TokenType::COLON);
+    ConsumeToken(TokenType::NEWLINE);
+    ConsumeToken(TokenType::INDENT);
 
-    ExpectToken(scanner::Token::LEFT_BRACE, "{");
-    Ptr<std::vector<Ptr<stmt::Stmt>>> body = ParseBlock();
+    StmtBlockId body = ParseBlock();
 
-    return std::make_shared<stmt::Func>(name, params, body);
+    return AddDefStmt();
   }
 
-  Ptr<stmt::Stmt> ParseClassDeclaration()
+  // Ptr<stmt::Stmt> ParseClassDeclaration()
+  // {
+  //   ExpectToken(TokenType::IDENTIFIER, "identifier", false);
+  //   Ptr<scanner::Token> name = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
+
+  //   Ptr<Variable> super;
+  //   if (GetCurrentTokenType() == TokenType::COLON)
+  //   {
+  //     ++cur_;
+  //     ExpectToken(TokenType::IDENTIFIER, "identifier", false);
+  //     super = std::make_shared<Variable>(std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator()), id_++);
+  //   }
+
+  //   ExpectToken(TokenType::LEFT_BRACE, "{");
+
+  //   Ptr<std::vector<Ptr<stmt::Func>>> methods = std::make_shared<std::vector<Ptr<stmt::Func>>>();
+  //   while (GetCurrentTokenType() != TokenType::RIGHT_BRACE && Remaining())
+  //   {
+  //     methods->push_back(ParseFuncDeclaration());
+  //   }
+
+  //   ExpectToken(TokenType::RIGHT_BRACE, "}");
+
+  //   return std::make_shared<stmt::Class>(name, super, methods);
+  // }
+
+  const Stmt* ParseStmt()
   {
-    ExpectToken(scanner::Token::IDENTIFIER, "identifier", false);
-    Ptr<scanner::Token> name = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
-
-    Ptr<Variable> super;
-    if (GetCurrentToken().GetType() == scanner::Token::COLON)
+    switch (GetCurrentTokenType())
     {
-      ++cur_;
-      ExpectToken(scanner::Token::IDENTIFIER, "identifier", false);
-      super = std::make_shared<Variable>(std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator()), id_++);
-    }
-
-    ExpectToken(scanner::Token::LEFT_BRACE, "{");
-
-    Ptr<std::vector<Ptr<stmt::Func>>> methods = std::make_shared<std::vector<Ptr<stmt::Func>>>();
-    while (GetCurrentToken().GetType() != scanner::Token::RIGHT_BRACE && Remaining())
-    {
-      methods->push_back(ParseFuncDeclaration());
-    }
-
-    ExpectToken(scanner::Token::RIGHT_BRACE, "}");
-
-    return std::make_shared<stmt::Class>(name, super, methods);
-  }
-
-  Ptr<stmt::Stmt> ParseVarDeclaration()
-  {
-    ExpectToken(scanner::Token::IDENTIFIER, "identifier", false);
-    Ptr<scanner::Token> name = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
-
-    Ptr<Expr> expr = nullptr;
-    if (GetCurrentToken().GetType() == scanner::Token::EQUAL)
-    {
-      ++cur_;
-      expr = ParseExpr();
-    }
-
-    ExpectToken(scanner::Token::SEMICOLON, ";");
-
-    return std::make_shared<stmt::Var>(name, expr);
-  }
-
-  Ptr<stmt::Stmt> ParseStmt()
-  {
-    if (GetCurrentToken().GetType() == scanner::Token::IF)
-    {
-      ++cur_;
-      return ParseIfStmt();
-    }
-    if (GetCurrentToken().GetType() == scanner::Token::PRINT)
-    {
-      ++cur_;
-      return ParsePrintStmt();
-    }
-    if (GetCurrentToken().GetType() == scanner::Token::WHILE)
-    {
-      ++cur_;
-      return ParseWhileStmt();
-    }
-    if (GetCurrentToken().GetType() == scanner::Token::LEFT_BRACE)
-    {
-      ++cur_;
-      return ParseBlockStmt();
-    }
-    if (GetCurrentToken().GetType() == scanner::Token::RETURN)
-    {
-      return ParseReturnStmt();
+      case TokenType::IF:     ++cur_; return ParseIfStmt();
+      case TokenType::WHILE:  ++cur_; return ParseWhileStmt();
+      case TokenType::INDENT: ++cur_; return ParseBlockStmt();
+      case TokenType::RETURN: ++cur_; return ParseReturnStmt();
+      default: break;
     }
 
     return ParseExpressionStmt();
   }
 
-  Ptr<stmt::Stmt> ParseReturnStmt()
+  const Stmt* ParseReturnStmt()
   {
-    auto tok = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
-
-    std::shared_ptr<Expr> value;
-    if (GetCurrentToken().GetType() != scanner::Token::SEMICOLON)
+    const Expr* value;
+    if (!IsAtEndStatement())
     {
       value = ParseExpr();
     }
 
-    ExpectToken(scanner::Token::SEMICOLON, ";");
+    ConsumeEndStatement();
 
-    return std::make_shared<stmt::Return>(tok, value);
+    return AddReturnStmt();
   }
 
-  Ptr<stmt::Stmt> ParseWhileStmt()
+  const Stmt* ParseWhileStmt()
   {
-    ExpectToken(scanner::Token::LEFT_PAREN, "(");
-    Ptr<Expr> condition = ParseExpr();
-    ExpectToken(scanner::Token::RIGHT_PAREN, ")");
+    const Expr* condition = ParseExpr();
+    ConsumeToken(TokenType::COLON);
+    ConsumeToken(TokenType::NEWLINE);
+    ConsumeToken(TokenType::INDENT);
 
-    Ptr<stmt::Stmt> body = ParseStmt();
+    const Stmt* body = ParseBlockStmt();
 
-    return std::make_shared<stmt::While>(condition, body);
+    return AddWhileStmt();
   }
 
-  Ptr<stmt::Stmt> ParseIfStmt()
+  const Stmt* ParseIfStmt()
   {
-    ExpectToken(scanner::Token::LEFT_PAREN, "(");
-    Ptr<Expr> condition = ParseExpr();
-    ExpectToken(scanner::Token::RIGHT_PAREN, ")");
+    const Expr* condition = ParseExpr();
+    ConsumeToken(TokenType::COLON);
+    ConsumeToken(TokenType::NEWLINE);
+    ConsumeToken(TokenType::INDENT);
 
-    Ptr<stmt::Stmt> stmt_true = ParseStmt();
-    Ptr<stmt::Stmt> stmt_false = nullptr;
-    if (GetCurrentToken().GetType() == scanner::Token::ELSE)
+    const Stmt* stmt_true = ParseBlockStmt();
+    const Stmt* stmt_false = nullptr;
+    if (GetCurrentTokenType() == TokenType::ELSE)
     {
       ++cur_;
-      stmt_false = ParseStmt();
+      ConsumeToken(TokenType::COLON);
+      ConsumeToken(TokenType::NEWLINE);
+      ConsumeToken(TokenType::INDENT);
+      stmt_false = ParseBlockStmt();
     }
 
-    return std::make_shared<stmt::If>(condition, stmt_true, stmt_false);
+    return AddIfStmt();
   }
 
-  Ptr<std::vector<Ptr<stmt::Stmt>>> ParseBlock()
+  StmtBlockId ParseBlock()
   {
-    Ptr<std::vector<Ptr<stmt::Stmt>>> statements = std::make_shared<std::vector<Ptr<stmt::Stmt>>>();
+    StmtBlockId block_id = stmt_blocks_.size();
+    stmt_blocks_.emplace_back();
 
-    while (GetCurrentToken().GetType() != scanner::Token::RIGHT_BRACE && Remaining())
+    while (GetCurrentTokenType() != TokenType::UNINDENT && Remaining())
     {
-      statements->push_back(ParseDeclarationOrStatement());
+      const Stmt* stmt = ParseDeclarationOrStatement();
+      stmt_blocks_[block_id].push_back(stmt);
     }
 
-    ExpectToken(scanner::Token::RIGHT_BRACE, "}");
-
-    return statements;
+    ConsumeToken(TokenType::UNINDENT);
+    return block_id;
   }
 
-  Ptr<stmt::Stmt> ParseBlockStmt()
+  const Stmt* ParseBlockStmt()
   {
-    return std::make_shared<stmt::Block>(ParseBlock());
+    StmtBlockId block_id = ParseBlock();
+    return AddBlockStmt();
   }
 
-  Ptr<stmt::Stmt> ParsePrintStmt()
+  const Stmt* ParseExpressionStmt()
   {
-    Ptr<Expr> expr = ParseExpr();
+    const Expr* expr = ParseExpr();
 
-    ExpectToken(scanner::Token::SEMICOLON, ";");
-    return std::make_shared<stmt::Print>(expr);
+    ConsumeEndStatement();
+    return AddExpressionStmt();
   }
 
-  Ptr<stmt::Stmt> ParseExpressionStmt()
-  {
-    Ptr<Expr> expr = ParseExpr();
 
-    ExpectToken(scanner::Token::SEMICOLON, ";");
-    return std::make_shared<stmt::Expression>(expr);
-  }
-
-  bool Remaining()
-  {
-    return GetCurrentToken().GetType() != scanner::Token::END_OF_FILE;
-  }
-
-  bool Synchronize()
-  {
-    while (Remaining())
-    {
-      if (GetCurrentToken().GetType() == scanner::Token::SEMICOLON)
-      {
-        ++cur_;
-        return true;
-      }
-      if (GetCurrentToken().OneOf(scanner::Token::CLASS,
-                                  scanner::Token::FUNC,
-                                  scanner::Token::VAR,
-                                  scanner::Token::FOR,
-                                  scanner::Token::IF,
-                                  scanner::Token::WHILE,
-                                  scanner::Token::RETURN))
-      {
-        return true;
-      }
-      ++cur_;
-    }
-    return false;
-  }
-
-  const scanner::Token& GetCurrentToken() const { return kTokens[cur_]; }
-
-  const scanner::Token& GetCurrentTokenAndIncremetIterator() { return kTokens[cur_++]; }
-
-  Ptr<Expr> ParseExpr()
+  const Expr* ParseExpr()
   {
     try
     {
@@ -298,22 +366,24 @@ private:
     }
   }
 
-  Ptr<Expr> ParseAssign()
+  const Expr* ParseAssign()
   {
-    Ptr<Expr> expr = ParseOr();
+    const Expr* expr = ParseOr();
 
-    if (GetCurrentToken().GetType() == scanner::Token::EQUAL)
+    if (GetCurrentTokenType() == TokenType::EQUAL)
     {
-      Ptr<scanner::Token> tok = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
-      Ptr<Expr> value = ParseAssign();
+      Token tok = GetCurrentTokenAndIncremetIterator();
+      const Expr* value = ParseAssign();
 
-      if (Variable* ptr = dynamic_cast<Variable*>(expr.get()))
+      if (expr->type_ == Expr::VARIABLE)
       {
-        expr = std::make_shared<Assign>(ptr->name_, value, id_++);
+        // expr = std::make_shared<Assign>(variable.name_, value, id_++);
+        return AddAssignExpr();
       }
-      else if (Get* ptr = dynamic_cast<Get*>(expr.get()))
+      else if (expr->type_ == Expr::GET)
       {
-        expr = std::make_shared<Set>(ptr->object_, ptr->name_, value);
+        // expr = std::make_shared<Set>(get.object_, ptr->name_, value);
+        return AddSetExpr();
       }
       else
       {
@@ -324,125 +394,126 @@ private:
     return expr;
   }
 
-  Ptr<Expr> ParseOr()
+  const Expr* ParseOr()
   {
-    Ptr<Expr> expr = ParseAnd();
+    const Expr* expr = ParseAnd();
 
-    while (GetCurrentToken().GetType() == scanner::Token::OR)
+    while (GetCurrentTokenType() == TokenType::OR)
     {
-      Ptr<scanner::Token> tok = std::make_shared<scanner::Token>(GetCurrentToken());
-      ++cur_;
-      Ptr<Expr> right = ParseAnd();
-      expr = std::make_shared<Logical>(expr, tok, right);
+      Token or_token = GetCurrentTokenAndIncremetIterator();
+      const Expr* right = ParseAnd();
+      // expr = std::make_shared<Logical>(expr, tok, right);
+      return AddLogicalExpr();
     }
 
     return expr;
   }
 
-  Ptr<Expr> ParseAnd()
+  const Expr* ParseAnd()
   {
-    Ptr<Expr> expr = ParseEquality();
+    const Expr* expr = ParseEquality();
 
-    while (GetCurrentToken().GetType() == scanner::Token::AND)
+    while (GetCurrentTokenType() == TokenType::AND)
     {
-      Ptr<scanner::Token> tok = std::make_shared<scanner::Token>(GetCurrentToken());
-      ++cur_;
-      Ptr<Expr> right = ParseEquality();
-      expr = std::make_shared<Logical>(expr, tok, right);
+      Token and_token = GetCurrentTokenAndIncremetIterator();
+      const Expr* right = ParseAnd();
+      // expr = std::make_shared<Logical>(expr, tok, right);
+      return AddLogicalExpr();
     }
 
     return expr;
   }
 
-  Ptr<Expr> ParseEquality()
+  const Expr* ParseEquality()
   {
-    Ptr<Expr> expr = ParseComparison();
+    const Expr* expr = ParseComparison();
 
-    while (GetCurrentToken().OneOf(scanner::Token::EQUAL_EQUAL, scanner::Token::BANG_EQUAL))
+    while (IsAtEqualityCheck())
     {
-      const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
-      Ptr<Expr> right = ParseComparison();
-      expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
+      Token op = GetCurrentTokenAndIncremetIterator();
+      const Expr* right = ParseComparison();
+      // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
+      return AddBinaryExpr();
     }
 
     return expr;
   }
 
-  Ptr<Expr> ParseComparison()
+  const Expr* ParseComparison()
   {
-    Ptr<Expr> expr = ParseAddition();
+    const Expr* expr = ParseAddition();
 
-    while (GetCurrentToken().OneOf(scanner::Token::LESS,
-                                   scanner::Token::LESS_EQUAL,
-                                   scanner::Token::GREATER,
-                                   scanner::Token::GREATER_EQUAL))
+    while (IsAtComparison())
     {
-      const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
-      Ptr<Expr> right = ParseAddition();
-      expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
+      Token op = GetCurrentTokenAndIncremetIterator();
+      const Expr* right = ParseAddition();
+      // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
+      return AddBinaryExpr();
     }
 
     return expr;
   }
 
-  Ptr<Expr> ParseAddition()
+  const Expr* ParseAddition()
   {
-    Ptr<Expr> expr = ParseMultiplication();
+    const Expr* expr = ParseMultiplication();
 
-    while (GetCurrentToken().OneOf(scanner::Token::MINUS, scanner::Token::PLUS))
+    while (IsAtAddSub())
     {
-      const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
-      Ptr<Expr> right = ParseMultiplication();
-      expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
+      Token op = GetCurrentTokenAndIncremetIterator();
+      const Expr* right = ParseMultiplication();
+      // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
+      return AddBinaryExpr();
     }
 
     return expr;
   }
 
-  Ptr<Expr> ParseMultiplication()
+  const Expr* ParseMultiplication()
   {
-    Ptr<Expr> expr = ParseUnary();
+    const Expr* expr = ParseUnary();
 
-    while (GetCurrentToken().OneOf(scanner::Token::STAR, scanner::Token::SLASH))
+    while (IsAtMulDiv())
     {
-      const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
-      Ptr<Expr> right = ParseUnary();
-      expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
+      Token op = GetCurrentTokenAndIncremetIterator();
+      const Expr* right = ParseUnary();
+      // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
+      return AddBinaryExpr();
     }
 
     return expr;
   }
 
-  Ptr<Expr> ParseUnary()
+  const Expr* ParseUnary()
   {
-    if (GetCurrentToken().OneOf(scanner::Token::BANG, scanner::Token::MINUS))
+    if (IsAtUnary())
     {
-      const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
-      Ptr<Expr> right = ParseUnary();
-      return std::make_shared<Unary>(std::make_shared<scanner::Token>(op), right);
+      Token op = GetCurrentTokenAndIncremetIterator();
+      const Expr* right = ParseUnary();
+      // return std::make_shared<Unary>(std::make_shared<scanner::Token>(op), right);
+      return AddUnaryExpr();
     }
-
-
 
     return ParseCall();
   }
 
-  Ptr<Expr> ParseCall()
+  const Expr* ParseCall()
   {
-    Ptr<Expr> expr = ParsePrimary();
+    const Expr* expr = ParsePrimary();
 
     while (1)
     {
-      if (GetCurrentToken().GetType() == scanner::Token::LEFT_PAREN)
+      if (GetCurrentTokenType() == TokenType::LEFT_PAREN)
       {
         ++cur_;
         expr = FinishCall(expr);
       }
-      else if (GetCurrentToken().GetType() == scanner::Token::DOT)
+      else if (GetCurrentTokenType() == TokenType::DOT)
       {
         ++cur_;
-        std::shared_ptr<scanner::Token> name = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
-        expr = std::make_shared<Get>(expr, name);
+        Token name = GetCurrentTokenAndIncremetIterator();
+        // expr = std::make_shared<Get>(expr, name);
+        expr = AddGetExpr();
       }
       else
       {
@@ -453,86 +524,204 @@ private:
     return expr;
   }
 
-  Ptr<Expr> FinishCall(Ptr<Expr> callee)
+  const Expr* FinishCall(const Expr* callee)
   {
-    Ptr<std::vector<Ptr<Expr>>> args = std::make_shared<std::vector<Ptr<Expr>>>();
+    std::vector<const Expr*> args;
 
-    if (GetCurrentToken().GetType() != scanner::Token::RIGHT_PAREN)
+    if (GetCurrentTokenType() != TokenType::RIGHT_PAREN)
     {
-      args->push_back(ParseExpr());
-      while (GetCurrentToken().GetType() == scanner::Token::COMMA)
+      args.push_back(ParseExpr());
+      while (GetCurrentTokenType() == TokenType::COMMA)
       {
         ++cur_;
-        args->push_back(ParseExpr());
+        args.push_back(ParseExpr());
       }
     }
 
-    const scanner::Token& tok = ExpectToken(scanner::Token::RIGHT_PAREN, ")");
-    auto tok_ptr = std::make_shared<scanner::Token>(tok);
+    Token tok = ConsumeToken(TokenType::RIGHT_PAREN);
 
-
-    return std::make_shared<Call>(callee, tok_ptr, args);
+    // return std::make_shared<Call>(callee, tok_ptr, args);
+    return AddCallExpr();
   }
 
-  Ptr<Expr> ParsePrimary()
+  const Expr* ParsePrimary()
   {
-    if (GetCurrentToken().OneOf(scanner::Token::FALSE,
-                                scanner::Token::TRUE,
-                                scanner::Token::NONE,
-                                scanner::Token::STRING,
-                                scanner::Token::INT_LITERAL,
-                                scanner::Token::FLOAT_LITERAL))
+    if (IsAtLiteral())
     {
-      const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
-      return std::make_shared<Literal>(std::make_shared<scanner::Token>(op));
+      Token op = GetCurrentTokenAndIncremetIterator();
+      return AddLiteralExpr();
     }
 
-    if (GetCurrentToken().GetType() == scanner::Token::THIS)
+    if (GetCurrentTokenType() == TokenType::THIS)
     {
-      const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
-      return std::make_shared<This>(std::make_shared<scanner::Token>(op), id_++);
+      Token op = GetCurrentTokenAndIncremetIterator();
+      return AddThisExpr();
+      // return std::make_shared<This>(std::make_shared<scanner::Token>(op), id_++);
     }
 
-    if (GetCurrentToken().GetType() == scanner::Token::SUPER)
-    {
-      const scanner::Token& name = GetCurrentTokenAndIncremetIterator();
-      ExpectToken(scanner::Token::DOT, ".");
-      const scanner::Token& method = ExpectToken(scanner::Token::IDENTIFIER, "method name");
-      return std::make_shared<Super>(std::make_shared<scanner::Token>(name),
-                                     std::make_shared<scanner::Token>(method),
-                                     id_++);
-    }
+    // if (GetCurrentTokenType() == TokenType::SUPER)
+    // {
+    //   const scanner::Token& name = GetCurrentTokenAndIncremetIterator();
+    //   ExpectToken(TokenType::DOT, ".");
+    //   const scanner::Token& method = ExpectToken(TokenType::IDENTIFIER, "method name");
+    //   return std::make_shared<Super>(std::make_shared<scanner::Token>(name),
+    //                                  std::make_shared<scanner::Token>(method),
+    //                                  id_++);
+    // }
 
-    if (GetCurrentToken().GetType() == scanner::Token::IDENTIFIER)
-    {
-      const scanner::Token& op = GetCurrentTokenAndIncremetIterator();
-      return std::make_shared<Variable>(std::make_shared<scanner::Token>(op), id_++);
-    }
+    Token op = ConsumeToken(TokenType::IDENTIFIER);
+      // return std::make_shared<Variable>(std::make_shared<scanner::Token>(op), id_++);
+    return AddVariableExpr();
 
-    ExpectToken(scanner::Token::LEFT_PAREN, "expression");
-    Ptr<Expr> expr = ParseExpr();
-    ExpectToken(scanner::Token::RIGHT_PAREN, ")");
-    return std::make_shared<Grouping>(expr);
+    // ExpectToken(TokenType::LEFT_PAREN, "expression");
+    // const Expr* expr = ParseExpr();
+    // ExpectToken(TokenType::RIGHT_PAREN, ")");
+    // return std::make_shared<Grouping>(expr);
   }
 
-  const scanner::Token& ExpectToken(scanner::Token::Type type, const char* name, bool incremet = true)
+  Token GetCurrentToken() const { return kTokens[cur_]; }
+
+  TokenType GetCurrentTokenType() const { return kTokens[cur_].meta_.type_; }
+
+  Token GetCurrentTokenAndIncremetIterator() { return kTokens[cur_++]; }
+
+  Token AssertToken(TokenType type)
   {
-    const scanner::Token& tok = GetCurrentToken();
-    if (tok.GetType() != type)
+    return _ExpectToken(type, false);
+  }
+
+  Token ConsumeToken(TokenType type)
+  {
+    return _ExpectToken(type, true);
+  }
+
+  Token ConsumeEndStatement()
+  {
+    Token cur_token = GetCurrentToken();
+    TokenType cur_type = cur_token.meta_.type_;
+    if (cur_type != TokenType::NEWLINE && cur_type != TokenType::SEMICOLON)
     {
       error_ = true;
-      auto pos = tok.GetPosition(kSource);
+      // auto pos = tok.GetPosition(kSource);
+      auto pos = std::pair<int, int>{0,0};
+      log_(Logger::kError, "[PARSER]:%d:%d: Unexpected %s",
+           pos.first,
+           pos.second,
+           GetTokenTypeName(cur_type));
+      throw std::runtime_error("Unexpected token.");
+    }
+    cur_ += 1;
+    return cur_token;
+  }
+
+  Token _ExpectToken(TokenType type, bool incremet = true)
+  {
+    Token cur_token = GetCurrentToken();
+    TokenType cur_type = cur_token.meta_.type_;
+    if (cur_type != type)
+    {
+      error_ = true;
+      // auto pos = tok.GetPosition(kSource);
+      auto pos = std::pair<int, int>{0,0};
       log_(Logger::kError, "[PARSER]:%d:%d: Expected \'%s\' before %s",
            pos.first,
            pos.second,
-           name,
-           tok.ToRawString().c_str());
+           GetTokenTypeName(type),
+           GetTokenTypeName(cur_type));
       throw std::runtime_error("Unexpected token.");
     }
     cur_ += incremet;
-    return tok;
+    return cur_token;
+  }
+
+  bool Remaining()
+  {
+    return GetCurrentTokenType() != TokenType::END_OF_FILE;
+  }
+
+  bool Synchronize()
+  {
+    while (Remaining())
+    {
+      if (IsAtEndStatement())
+      {
+        ++cur_;
+        return true;
+      }
+      if (IsAtSynchronizePivot())
+      {
+        return true;
+      }
+      ++cur_;
+    }
+    return false;
+  }
+
+  bool IsAtEndStatement()
+  {
+    TokenType type = GetCurrentTokenType();
+    return type == TokenType::SEMICOLON || type == TokenType::NEWLINE;
+  }
+
+  bool IsAtSynchronizePivot()
+  {
+    TokenType type = GetCurrentTokenType();
+    return type == TokenType::CLASS ||
+           type == TokenType::DEF   ||
+           type == TokenType::FOR   ||
+           type == TokenType::WHILE ||
+           type == TokenType::IF    ||
+           type == TokenType::RETURN;
+  }
+
+  bool IsAtEqualityCheck()
+  {
+    TokenType type = GetCurrentTokenType();
+    return type == TokenType::BANG_EQUAL  ||
+           type == TokenType::EQUAL_EQUAL;
+  }
+
+  bool IsAtComparison()
+  {
+    TokenType type = GetCurrentTokenType();
+    return type == TokenType::LESS          ||
+           type == TokenType::LESS_EQUAL    ||
+           type == TokenType::GREATER       ||
+           type == TokenType::GREATER_EQUAL;
+  }
+
+  bool IsAtAddSub()
+  {
+    TokenType type = GetCurrentTokenType();
+    return type == TokenType::PLUS  ||
+           type == TokenType::MINUS;
+  }
+
+  bool IsAtMulDiv()
+  {
+    TokenType type = GetCurrentTokenType();
+    return type == TokenType::STAR  ||
+           type == TokenType::SLASH;
+  }
+
+  bool IsAtUnary()
+  {
+    TokenType type = GetCurrentTokenType();
+    return type == TokenType::MINUS ||
+           type == TokenType::NOT;
+  }
+
+  bool IsAtLiteral()
+  {
+    TokenType type = GetCurrentTokenType();
+    return type == TokenType::FALSE       ||
+           type == TokenType::TRUE        ||
+           type == TokenType::NONE        ||
+           type == TokenType::STRING      ||
+           type == TokenType::INT_LITERAL ||
+           type == TokenType::FLOAT_LITERAL;
   }
 
 };
 
-} // parser
+} // ilang

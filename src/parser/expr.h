@@ -5,44 +5,8 @@
 // #include "scanner/scanner.h"
 // #include "common/object.h"
 
-namespace parser
+namespace ilang
 {
-
-struct Expr
-{
-  enum : uint8_t
-  {
-    THIS,
-    SUPER,
-    GET,
-    SET,
-    ASSIGN,
-    BINARY,
-    LOGICAL,
-    GROUPING,
-    LITERAL,
-    UNARY,
-    VARIABLE,
-    CALL
-  } type_;
-
-  union
-  {
-    BaseExpr base_;
-    ThisExpr this_;
-    SuperExpr super_;
-    GetExpr get_;
-    SetExpr set_;
-    AssignExpr assign_;
-    BinaryExpr binary_;
-    LogicalExpr logical_;
-    GroupingExpr grouping_;
-    LiteralExpr literal_;
-    UnaryExpr unary_;
-    VariableExpr variable_;
-    CallExpr call_;
-  };
-};
 
 using ExprId = int32_t;
 
@@ -124,4 +88,60 @@ struct CallExpr : BaseExpr
   // const std::vector<const Expr*>* args_;
 };
 
-} // parser
+struct Expr
+{
+  enum Type : uint8_t
+  {
+    THIS,
+    SUPER,
+    GET,
+    SET,
+    ASSIGN,
+    BINARY,
+    LOGICAL,
+    GROUPING,
+    LITERAL,
+    UNARY,
+    VARIABLE,
+    CALL
+  } type_;
+
+  union
+  {
+    BaseExpr base_;
+    ThisExpr this_;
+    SuperExpr super_;
+    GetExpr get_;
+    SetExpr set_;
+    AssignExpr assign_;
+    BinaryExpr binary_;
+    LogicalExpr logical_;
+    GroupingExpr grouping_;
+    LiteralExpr literal_;
+    UnaryExpr unary_;
+    VariableExpr variable_;
+    CallExpr call_;
+  };
+};
+
+static const char* ExprTypeToString(Expr::Type type)
+{
+  switch (type)
+  {
+    case Expr::THIS:      return "THIS";
+    case Expr::SUPER:     return "SUPER";
+    case Expr::GET:       return "GET";
+    case Expr::SET:       return "SET";
+    case Expr::ASSIGN:    return "ASSIGN";
+    case Expr::BINARY:    return "BINARY";
+    case Expr::LOGICAL:   return "LOGICAL";
+    case Expr::GROUPING:  return "GROUPING";
+    case Expr::LITERAL:   return "LITERAL";
+    case Expr::UNARY:     return "UNARY";
+    case Expr::VARIABLE:  return "VARIABLE";
+    case Expr::CALL:      return "CALL";
+  }
+  throw std::runtime_error("[ExprTypeToString] Bad type");
+}
+
+} // ilang

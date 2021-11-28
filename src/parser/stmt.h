@@ -4,33 +4,8 @@
 
 #include "expr.h"
 
-namespace parser
+namespace ilang
 {
-
-struct Stmt
-{
-  enum : uint8_t
-  {
-    RETURN,
-    DEF,
-    CLASS,
-    IF,
-    BLOCK,
-    EXPRESSION,
-    WHILE
-  } type_;
-
-  union
-  {
-    ReturnStmt return_;
-    DefStmt def_;
-    ClassStmt class_;
-    IfStmt if_;
-    BlockStmt block_;
-    ExpressionStmt expression_;
-    WhileStmt while_;
-  };
-};
 
 struct ReturnStmt
 {
@@ -75,4 +50,44 @@ struct WhileStmt
   // const Stmt* body_;
 };
 
-} // namespace parser
+struct Stmt
+{
+  enum Type : uint8_t
+  {
+    RETURN,
+    DEF,
+    CLASS,
+    IF,
+    BLOCK,
+    EXPRESSION,
+    WHILE
+  } type_;
+
+  union
+  {
+    ReturnStmt return_;
+    DefStmt def_;
+    ClassStmt class_;
+    IfStmt if_;
+    BlockStmt block_;
+    ExpressionStmt expression_;
+    WhileStmt while_;
+  };
+};
+
+static const char* StmtTypeToString(Stmt::Type type)
+{
+  switch (type)
+  {
+    case Stmt::RETURN:      return "RETURN";
+    case Stmt::DEF:         return "DEF";
+    case Stmt::CLASS:       return "CLASS";
+    case Stmt::IF:          return "IF";
+    case Stmt::BLOCK:       return "BLOCK";
+    case Stmt::EXPRESSION:  return "EXPRESSION";
+    case Stmt::WHILE:       return "WHILE";
+  }
+  throw std::runtime_error("[StmtTypeToString] Bad type");
+}
+
+} // namespace ilang
