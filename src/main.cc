@@ -4,9 +4,9 @@
 
 
 #include "scanner/scanner.h"
-// #include "parser/expr.h"
-// #include "parser/stmt.h"
-// #include "parser/parser.h"
+#include "parser/expr.h"
+#include "parser/stmt.h"
+#include "parser/parser.h"
 // #include "resolver/resolver.h"
 // #include "interpreter/interpreter.h"
 
@@ -41,8 +41,9 @@ int ExecuteFile(const char* path)
     std::cout << token_spawner.ToString(t) << '\n';
   }
 
+
   // parser::Parser parser(source, tokens);
-  // std::vector<std::shared_ptr<parser::stmt::Stmt>> statements = parser.Parse();
+  // std::vector<std::shared_ptr<parser::Stmt>> statements = parser.Parse();
 
   // if (parser.HasError())
   // {

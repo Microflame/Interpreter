@@ -87,7 +87,11 @@ private:
 
     if (cur_ == end_)
     {
-      //TODO: Emit UNINDENT's
+      if (indent_stack_.size())
+      {
+        indent_stack_.pop_back();
+        return ExtractToken(TokenType::UNINDENT, 0);
+      }
       return ExtractToken(TokenType::END_OF_FILE, 0);
     }
 
@@ -101,6 +105,10 @@ private:
       {
         line_indent += 1;
         i += 1;
+      }
+      if (Remaining() && cur_[i] == '#')
+      {
+        return ExtractToken(TokenType::EMPTY_TOKEN, i);
       }
 
       if (line_indent > current_indent_col_)
@@ -121,6 +129,7 @@ private:
         ReportError("[SCANNER]:%d:%d: indentation error.", pos.line, pos.column);
         return ExtractToken(TokenType::BAD_TOKEN, i);
       }
+      return ExtractToken(TokenType::EMPTY_TOKEN, i);
     }
 
     while (current_indent_level_ != indent_level_)

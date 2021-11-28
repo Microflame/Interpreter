@@ -23,7 +23,7 @@ public:
   {}
 
 
-  std::vector<Ptr<stmt::Stmt>> Parse()
+  std::vector<Ptr<Stmt>> Parse()
   {
     cur_ = 0;
     std::vector<Ptr<stmt::Stmt>> statements;

@@ -1,246 +1,127 @@
 #pragma once
 
-#include <memory>
+#include <vector>
 
-#include "scanner/scanner.h"
-#include "common/object.h"
-
-namespace stmt
-{
-
-class Stmt;
-
-} // namespace stmt
-
+// #include "scanner/scanner.h"
+// #include "common/object.h"
 
 namespace parser
 {
-  
-template <typename T>
-using Ptr = std::shared_ptr<T>;
 
-class Assign;
-class Get;
-class This;
-class Super;
-class Set;
-class Binary;
-class Logical;
-class Grouping;
-class Literal;
-class Unary;
-class Variable;
-class Call;
-
-class IVisitor
+struct Expr
 {
-public:
-  virtual void Visit(const Assign&) = 0;
-  virtual void Visit(const Get&) = 0;
-  virtual void Visit(const This&) = 0;
-  virtual void Visit(const Super&) = 0;
-  virtual void Visit(const Set&) = 0;
-  virtual void Visit(const Binary&) = 0;
-  virtual void Visit(const Logical&) = 0;
-  virtual void Visit(const Grouping&) = 0;
-  virtual void Visit(const Literal&) = 0;
-  virtual void Visit(const Unary&) = 0;
-  virtual void Visit(const Variable&) = 0;
-  virtual void Visit(const Call&) = 0;
+  enum : uint8_t
+  {
+    THIS,
+    SUPER,
+    GET,
+    SET,
+    ASSIGN,
+    BINARY,
+    LOGICAL,
+    GROUPING,
+    LITERAL,
+    UNARY,
+    VARIABLE,
+    CALL
+  } type_;
 
-  virtual ~IVisitor() {}
+  union
+  {
+    BaseExpr base_;
+    ThisExpr this_;
+    SuperExpr super_;
+    GetExpr get_;
+    SetExpr set_;
+    AssignExpr assign_;
+    BinaryExpr binary_;
+    LogicalExpr logical_;
+    GroupingExpr grouping_;
+    LiteralExpr literal_;
+    UnaryExpr unary_;
+    VariableExpr variable_;
+    CallExpr call_;
+  };
 };
 
-class Expr
+using ExprId = int32_t;
+
+struct BaseExpr
 {
-public:
-  const size_t kId;
-
-  Expr()
-    : kId(-1)
-  {}
-
-  Expr(size_t id)
-    : kId(id)
-  {}
-
-  virtual void Accept(IVisitor& visitor) const = 0;
-
-  virtual ~Expr() {}
+  ExprId id_;
 };
 
-
-class This: public Expr
+struct ThisExpr : BaseExpr
 {
-public:
-  This(Ptr<scanner::Token> name, size_t id)
-    : Expr(id),
-      name_(name)
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  Ptr<scanner::Token> name_;
+  // scanner::Token name_;
 };
 
-class Super: public Expr
+struct SuperExpr : BaseExpr
 {
-public:
-  Super(Ptr<scanner::Token> name, Ptr<scanner::Token> method, size_t id)
-    : Expr(id),
-      name_(name),
-      method_(method)
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  Ptr<scanner::Token> name_;
-  Ptr<scanner::Token> method_;
+  // scanner::Token name_;
+  // scanner::Token method_;
 };
 
-class Get: public Expr
+struct GetExpr : BaseExpr
 {
-public:
-  Get(Ptr<Expr> object, Ptr<scanner::Token> name)
-    : object_(object),
-      name_(name)
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  Ptr<Expr> object_;
-  Ptr<scanner::Token> name_;
+  // const Expr* object_;
+  // scanner::Token name_;
 };
 
-class Set: public Expr
+struct SetExpr : BaseExpr
 {
-public:
-  Set(Ptr<Expr> object, Ptr<scanner::Token> name, Ptr<Expr> value)
-    : object_(object),
-      name_(name),
-      value_(value)
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  Ptr<Expr> object_;
-  Ptr<scanner::Token> name_;
-  Ptr<Expr> value_;
+  // const Expr* object_;
+  // const Expr* value_;
+  // scanner::Token name_;
 };
 
-class Assign: public Expr
+struct AssignExpr : BaseExpr
 {
-public:
-  Assign(Ptr<scanner::Token> name, Ptr<Expr> value, size_t id)
-    : Expr(id),
-      name_(name),
-      value_(value)
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  Ptr<Expr> left_;
-  Ptr<scanner::Token> name_;
-  Ptr<Expr> value_;
+  // const Expr* left_;
+  // const Expr* value_;
+  // scanner::Token name_;
 };
 
-class Binary: public Expr
+struct BinaryExpr : BaseExpr
 {
-public:
-  Binary(Ptr<Expr> left, Ptr<scanner::Token> op, Ptr<Expr> right)
-    : left_(left),
-      op_(op),
-      right_(right)
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  Ptr<Expr> left_;
-  Ptr<scanner::Token> op_;
-  Ptr<Expr> right_;
+  // const Expr* left_;
+  // const Expr* right_;
+  // scanner::Token op_;
 };
 
-class Logical: public Expr
+struct LogicalExpr : BaseExpr
 {
-public:
-  Logical(Ptr<Expr> left, Ptr<scanner::Token> op, Ptr<Expr> right)
-    : left_(left),
-      op_(op),
-      right_(right)
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  Ptr<Expr> left_;
-  Ptr<scanner::Token> op_;
-  Ptr<Expr> right_;
+  // const Expr* left_;
+  // const Expr* right_;
+  // scanner::Token op_;
 };
 
-class Grouping: public Expr
+struct GroupingExpr : BaseExpr
 {
-public:
-  Grouping(Ptr<Expr> expr)
-    : expr_(expr)
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  Ptr<Expr> expr_;
+  // const Expr* expr_;
 };
 
-class Literal: public Expr
+struct LiteralExpr : BaseExpr
 {
-public:
-  Literal(Ptr<scanner::Token> tok)
-    : val_(tok->GetObject())
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  common::Object val_;
+  // const Object* val_;
 };
 
-class Unary: public Expr
+struct UnaryExpr : BaseExpr
 {
-public:
-  Unary(Ptr<scanner::Token> op, Ptr<Expr> right)
-    : op_(op),
-      right_(right)
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  Ptr<scanner::Token> op_;
-  Ptr<Expr> right_;
+  // const Expr* right_;
+  // scanner::Token op_;
 };
 
-class Variable: public Expr
+struct VariableExpr : BaseExpr
 {
-public:
-  Variable(Ptr<scanner::Token> name, size_t id)
-    : Expr(id),
-      name_(name)
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  Ptr<scanner::Token> name_;
+  // scanner::Token name_;
 };
 
-class Call: public Expr
+struct CallExpr : BaseExpr
 {
-public:
-  Call(Ptr<Expr> callee, Ptr<scanner::Token> paren, Ptr<std::vector<Ptr<Expr>>> args)
-    : callee_(callee),
-      paren_(paren),
-      args_(args)
-  {}
-
-  void Accept(IVisitor& visitor) const override { visitor.Visit(*this); }
-
-  Ptr<Expr> callee_;
-  Ptr<scanner::Token> paren_;
-  Ptr<std::vector<Ptr<Expr>>> args_;
+  // const Expr* callee_;
+  // scanner::Token paren_;
+  // const std::vector<const Expr*>* args_;
 };
 
 } // parser

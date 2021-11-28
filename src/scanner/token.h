@@ -100,9 +100,8 @@ struct Token
 #define INTERP_PUT_TOKEN_NAME(_) case TokenType::_: { return #_; }
       INTERP_FORALL_TOKEN_TYPES(INTERP_PUT_TOKEN_NAME)
 #undef INTERP_PUT_TOKEN_NAME
-      default:
-        return "BAD TOKEN!"; //TODO: throw
     }
+    throw std::runtime_error("invalid token type");
   }
 
   TokenType GetType() const { return meta_.type_; }
