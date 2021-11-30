@@ -11,24 +11,24 @@
 namespace ilang
 {
 
-using StmtBlockId = int32_t;
 
 class Parser
 {
 public:
-  Parser(const std::string& source, const std::vector<Token>& tokens)
+  Parser(const std::string& source, const std::vector<Token>& tokens, ExprStmtPool* espool)
     : kSource(source),
       kTokens(tokens),
+      expr_stmt_pool_(*espool),
       log_(Logger::kDebug),
       error_(false),
       id_(1)
   {}
 
 
-  std::vector<const Stmt*> Parse()
+  std::vector<StmtId> Parse()
   {
     cur_ = 0;
-    std::vector<const Stmt*> statements;
+    std::vector<StmtId> statements;
 
     while (1)
     {
@@ -47,57 +47,54 @@ public:
 private:
   const std::string& kSource;
   const std::vector<Token>& kTokens;
-  std::vector<Stmt> statements_;
-  std::vector<Expr> expressions_;
-  std::vector<std::vector<const Stmt*>> stmt_blocks_;
+  ExprStmtPool& expr_stmt_pool_;
   size_t cur_;
   Logger log_;
   bool error_;
   size_t id_;
 
-  const Stmt* AddStmt(Stmt stmt)
+  StmtId AddStmt(Stmt stmt)
   {
     // std::cout << "STMT: " << StmtTypeToString(stmt.type_) << std::endl;
-    statements_.push_back(stmt);
-    return &statements_.back();
+    return expr_stmt_pool_.PushStmt(stmt);
   }
 
-  const Stmt* AddDefStmt()
+  StmtId AddDefStmt()
   {
     Stmt stmt = {Stmt::DEF};
-    stmt.def_ = {};
+    stmt.def_ = {.name_=0, .params_=0, .body_=0};
     return AddStmt(stmt);
   }
 
-  const Stmt* AddReturnStmt()
+  StmtId AddReturnStmt()
   {
     Stmt stmt = {Stmt::RETURN};
     stmt.return_ = {};
     return AddStmt(stmt);
   }
 
-  const Stmt* AddWhileStmt()
+  StmtId AddWhileStmt()
   {
     Stmt stmt = {Stmt::WHILE};
     stmt.while_ = {};
     return AddStmt(stmt);
   }
 
-  const Stmt* AddIfStmt()
+  StmtId AddIfStmt()
   {
     Stmt stmt = {Stmt::IF};
     stmt.if_ = {};
     return AddStmt(stmt);
   }
 
-  const Stmt* AddBlockStmt()
+  StmtId AddBlockStmt()
   {
     Stmt stmt = {Stmt::BLOCK};
     stmt.block_ = {};
     return AddStmt(stmt);
   }
 
-  const Stmt* AddExpressionStmt()
+  StmtId AddExpressionStmt()
   {
     Stmt stmt = {Stmt::EXPRESSION};
     stmt.expression_ = {};
@@ -105,84 +102,73 @@ private:
   }
 
 
-  const Expr* AddExpr(Expr expr)
+  ExprId AddExpr(Expr expr)
   {
     // std::cout << "EXPR: " << ExprTypeToString(expr.type_) << '\n';
-    expressions_.push_back(expr);
-    return &expressions_.back();
+    return expr_stmt_pool_.PushExpr(expr);
   }
 
-  const Expr* AddAssignExpr()
+  ExprId AddAssignExpr()
   {
     Expr expr = {Expr::ASSIGN};
-    expr.assign_ = {{-1}};
     return AddExpr(expr);
   }
 
-  const Expr* AddSetExpr()
+  ExprId AddSetExpr()
   {
     Expr expr = {Expr::SET};
-    expr.set_ = {{-1}};
     return AddExpr(expr);
   }
 
-  const Expr* AddLogicalExpr()
+  ExprId AddLogicalExpr()
   {
     Expr expr = {Expr::LOGICAL};
-    expr.logical_ = {{-1}};
     return AddExpr(expr);
   }
 
-  const Expr* AddBinaryExpr()
+  ExprId AddBinaryExpr()
   {
     Expr expr = {Expr::BINARY};
-    expr.binary_ = {{-1}};
     return AddExpr(expr);
   }
 
-  const Expr* AddUnaryExpr()
+  ExprId AddUnaryExpr()
   {
     Expr expr = {Expr::UNARY};
-    expr.unary_ = {{-1}};
     return AddExpr(expr);
   }
 
-  const Expr* AddGetExpr()
+  ExprId AddGetExpr()
   {
     Expr expr = {Expr::GET};
-    expr.get_ = {{-1}};
     return AddExpr(expr);
   }
 
-  const Expr* AddCallExpr()
+  ExprId AddCallExpr()
   {
     Expr expr = {Expr::CALL};
-    expr.call_ = {{-1}};
     return AddExpr(expr);
   }
 
-  const Expr* AddLiteralExpr()
+  ExprId AddLiteralExpr()
   {
     Expr expr = {Expr::LITERAL};
-    expr.literal_ = {{-1}};
     return AddExpr(expr);
   }
 
-  const Expr* AddThisExpr()
+  ExprId AddThisExpr()
   {
     Expr expr = {Expr::THIS};
-    expr.this_ = {{-1}};
     return AddExpr(expr);
   }
 
-  const Expr* AddVariableExpr()
+  ExprId AddVariableExpr()
   {
     Expr expr = {Expr::VARIABLE};
-    expr.variable_ = {{-1}};
     return AddExpr(expr);
   }
 
-  const Stmt* ParseDeclarationOrStatement()
+  StmtId ParseDeclarationOrStatement()
   {
     while (IsAtEndStatement())
       ++cur_;
@@ -197,7 +183,7 @@ private:
       if (GetCurrentTokenType() == TokenType::CLASS)
       {
         ++cur_;
-        return nullptr;
+        return -1;
         //return ParseClassDeclaration();
       }
 
@@ -206,13 +192,13 @@ private:
     catch (const std::runtime_error& e)
     {
       Synchronize();
-      return nullptr;
+      return -1;
     }
 
     return ParseExpressionStmt();
   }
 
-  const Stmt* ParseFunction()
+  StmtId ParseFunction()
   {
     Token name = ConsumeToken(TokenType::IDENTIFIER);
 
@@ -264,7 +250,7 @@ private:
   //   return std::make_shared<stmt::Class>(name, super, methods);
   // }
 
-  const Stmt* ParseStmt()
+  StmtId ParseStmt()
   {
     switch (GetCurrentTokenType())
     {
@@ -278,9 +264,9 @@ private:
     return ParseExpressionStmt();
   }
 
-  const Stmt* ParseReturnStmt()
+  StmtId ParseReturnStmt()
   {
-    const Expr* value;
+    ExprId value;
     if (!IsAtEndStatement())
     {
       value = ParseExpr();
@@ -291,27 +277,27 @@ private:
     return AddReturnStmt();
   }
 
-  const Stmt* ParseWhileStmt()
+  StmtId ParseWhileStmt()
   {
-    const Expr* condition = ParseExpr();
+    ExprId condition = ParseExpr();
     ConsumeToken(TokenType::COLON);
     ConsumeToken(TokenType::NEWLINE);
     ConsumeToken(TokenType::INDENT);
 
-    const Stmt* body = ParseBlockStmt();
+    StmtId body = ParseBlockStmt();
 
     return AddWhileStmt();
   }
 
-  const Stmt* ParseIfStmt()
+  StmtId ParseIfStmt()
   {
-    const Expr* condition = ParseExpr();
+    ExprId condition = ParseExpr();
     ConsumeToken(TokenType::COLON);
     ConsumeToken(TokenType::NEWLINE);
     ConsumeToken(TokenType::INDENT);
 
-    const Stmt* stmt_true = ParseBlockStmt();
-    const Stmt* stmt_false = nullptr;
+    StmtId stmt_true = ParseBlockStmt();
+    StmtId stmt_false = -1;
     if (GetCurrentTokenType() == TokenType::ELSE)
     {
       ++cur_;
@@ -326,35 +312,34 @@ private:
 
   StmtBlockId ParseBlock()
   {
-    StmtBlockId block_id = stmt_blocks_.size();
-    stmt_blocks_.emplace_back();
+    StmtBlockId block_id = expr_stmt_pool_.MakeNewStmtBlock();
 
     while (GetCurrentTokenType() != TokenType::UNINDENT && Remaining())
     {
-      const Stmt* stmt = ParseDeclarationOrStatement();
-      stmt_blocks_[block_id].push_back(stmt);
+      Stmt stmt = expr_stmt_pool_.statements_[ParseDeclarationOrStatement()];
+      expr_stmt_pool_.stmt_blocks_[block_id].push_back(stmt);
     }
 
     ConsumeToken(TokenType::UNINDENT);
     return block_id;
   }
 
-  const Stmt* ParseBlockStmt()
+  StmtId ParseBlockStmt()
   {
     StmtBlockId block_id = ParseBlock();
     return AddBlockStmt();
   }
 
-  const Stmt* ParseExpressionStmt()
+  StmtId ParseExpressionStmt()
   {
-    const Expr* expr = ParseExpr();
+    ExprId expr = ParseExpr();
 
     ConsumeEndStatement();
     return AddExpressionStmt();
   }
 
 
-  const Expr* ParseExpr()
+  ExprId ParseExpr()
   {
     try
     {
@@ -366,21 +351,22 @@ private:
     }
   }
 
-  const Expr* ParseAssign()
+  ExprId ParseAssign()
   {
-    const Expr* expr = ParseOr();
+    ExprId lvalue_id = ParseOr();
 
     if (GetCurrentTokenType() == TokenType::EQUAL)
     {
       Token tok = GetCurrentTokenAndIncremetIterator();
-      const Expr* value = ParseAssign();
+      ExprId value = ParseAssign();
+      Expr::Type lvalue_type = expr_stmt_pool_.expressions_[lvalue_id].type_;
 
-      if (expr->type_ == Expr::VARIABLE)
+      if (lvalue_type == Expr::VARIABLE)
       {
         // expr = std::make_shared<Assign>(variable.name_, value, id_++);
         return AddAssignExpr();
       }
-      else if (expr->type_ == Expr::GET)
+      else if (lvalue_type == Expr::GET)
       {
         // expr = std::make_shared<Set>(get.object_, ptr->name_, value);
         return AddSetExpr();
@@ -391,17 +377,17 @@ private:
       }
     }
 
-    return expr;
+    return lvalue_id;
   }
 
-  const Expr* ParseOr()
+  ExprId ParseOr()
   {
-    const Expr* expr = ParseAnd();
+    ExprId expr = ParseAnd();
 
     while (GetCurrentTokenType() == TokenType::OR)
     {
       Token or_token = GetCurrentTokenAndIncremetIterator();
-      const Expr* right = ParseAnd();
+      ExprId right = ParseAnd();
       // expr = std::make_shared<Logical>(expr, tok, right);
       return AddLogicalExpr();
     }
@@ -409,14 +395,14 @@ private:
     return expr;
   }
 
-  const Expr* ParseAnd()
+  ExprId ParseAnd()
   {
-    const Expr* expr = ParseEquality();
+    ExprId expr = ParseEquality();
 
     while (GetCurrentTokenType() == TokenType::AND)
     {
       Token and_token = GetCurrentTokenAndIncremetIterator();
-      const Expr* right = ParseAnd();
+      ExprId right = ParseAnd();
       // expr = std::make_shared<Logical>(expr, tok, right);
       return AddLogicalExpr();
     }
@@ -424,14 +410,14 @@ private:
     return expr;
   }
 
-  const Expr* ParseEquality()
+  ExprId ParseEquality()
   {
-    const Expr* expr = ParseComparison();
+    ExprId expr = ParseComparison();
 
     while (IsAtEqualityCheck())
     {
       Token op = GetCurrentTokenAndIncremetIterator();
-      const Expr* right = ParseComparison();
+      ExprId right = ParseComparison();
       // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
       return AddBinaryExpr();
     }
@@ -439,14 +425,14 @@ private:
     return expr;
   }
 
-  const Expr* ParseComparison()
+  ExprId ParseComparison()
   {
-    const Expr* expr = ParseAddition();
+    ExprId expr = ParseAddition();
 
     while (IsAtComparison())
     {
       Token op = GetCurrentTokenAndIncremetIterator();
-      const Expr* right = ParseAddition();
+      ExprId right = ParseAddition();
       // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
       return AddBinaryExpr();
     }
@@ -454,14 +440,14 @@ private:
     return expr;
   }
 
-  const Expr* ParseAddition()
+  ExprId ParseAddition()
   {
-    const Expr* expr = ParseMultiplication();
+    ExprId expr = ParseMultiplication();
 
     while (IsAtAddSub())
     {
       Token op = GetCurrentTokenAndIncremetIterator();
-      const Expr* right = ParseMultiplication();
+      ExprId right = ParseMultiplication();
       // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
       return AddBinaryExpr();
     }
@@ -469,14 +455,14 @@ private:
     return expr;
   }
 
-  const Expr* ParseMultiplication()
+  ExprId ParseMultiplication()
   {
-    const Expr* expr = ParseUnary();
+    ExprId expr = ParseUnary();
 
     while (IsAtMulDiv())
     {
       Token op = GetCurrentTokenAndIncremetIterator();
-      const Expr* right = ParseUnary();
+      ExprId right = ParseUnary();
       // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
       return AddBinaryExpr();
     }
@@ -484,12 +470,12 @@ private:
     return expr;
   }
 
-  const Expr* ParseUnary()
+  ExprId ParseUnary()
   {
     if (IsAtUnary())
     {
       Token op = GetCurrentTokenAndIncremetIterator();
-      const Expr* right = ParseUnary();
+      ExprId right = ParseUnary();
       // return std::make_shared<Unary>(std::make_shared<scanner::Token>(op), right);
       return AddUnaryExpr();
     }
@@ -497,9 +483,9 @@ private:
     return ParseCall();
   }
 
-  const Expr* ParseCall()
+  ExprId ParseCall()
   {
-    const Expr* expr = ParsePrimary();
+    ExprId expr = ParsePrimary();
 
     while (1)
     {
@@ -524,17 +510,21 @@ private:
     return expr;
   }
 
-  const Expr* FinishCall(const Expr* callee)
+  ExprId FinishCall(ExprId callee)
   {
-    std::vector<const Expr*> args;
+    ExprBlockId block_id = expr_stmt_pool_.MakeNewExprBlock();
 
     if (GetCurrentTokenType() != TokenType::RIGHT_PAREN)
     {
-      args.push_back(ParseExpr());
+      ExprId expr_id = ParseExpr();
+      Expr expr = expr_stmt_pool_.expressions_[expr_id];
+      expr_stmt_pool_.expr_blocks_[block_id].push_back(expr);
       while (GetCurrentTokenType() == TokenType::COMMA)
       {
         ++cur_;
-        args.push_back(ParseExpr());
+        ExprId expr_id = ParseExpr();
+        Expr expr = expr_stmt_pool_.expressions_[expr_id];
+        expr_stmt_pool_.expr_blocks_[block_id].push_back(expr);
       }
     }
 
@@ -544,7 +534,7 @@ private:
     return AddCallExpr();
   }
 
-  const Expr* ParsePrimary()
+  ExprId ParsePrimary()
   {
     if (IsAtLiteral())
     {
@@ -574,7 +564,7 @@ private:
     return AddVariableExpr();
 
     // ExpectToken(TokenType::LEFT_PAREN, "expression");
-    // const Expr* expr = ParseExpr();
+    // ExprId expr = ParseExpr();
     // ExpectToken(TokenType::RIGHT_PAREN, ")");
     // return std::make_shared<Grouping>(expr);
   }

@@ -2,90 +2,86 @@
 
 #include <vector>
 
-// #include "scanner/scanner.h"
-// #include "common/object.h"
+#include "scanner/token.h"
+#include "common/object.h"
 
 namespace ilang
 {
 
 using ExprId = int32_t;
+using ExprBlockId = int32_t;
 
-struct BaseExpr
-{
-  ExprId id_;
-};
-
-struct ThisExpr : BaseExpr
+struct ThisExpr
 {
   // scanner::Token name_;
 };
 
-struct SuperExpr : BaseExpr
+struct SuperExpr
 {
   // scanner::Token name_;
   // scanner::Token method_;
 };
 
-struct GetExpr : BaseExpr
+struct GetExpr
 {
-  // const Expr* object_;
-  // scanner::Token name_;
+  ExprId object_;
+  TokenStrId name_;
 };
 
-struct SetExpr : BaseExpr
+struct SetExpr
 {
-  // const Expr* object_;
-  // const Expr* value_;
-  // scanner::Token name_;
+  ExprId object_;
+  ExprId value_;
+  TokenStrId name_;
 };
 
-struct AssignExpr : BaseExpr
+struct AssignExpr
 {
-  // const Expr* left_;
-  // const Expr* value_;
-  // scanner::Token name_;
+  ExprId left_;
+  ExprId value_;
+  TokenStrId name_;
 };
 
-struct BinaryExpr : BaseExpr
+struct BinaryExpr
 {
-  // const Expr* left_;
-  // const Expr* right_;
-  // scanner::Token op_;
+  ExprId left_;
+  ExprId right_;
+  TokenType op_;
 };
 
-struct LogicalExpr : BaseExpr
+struct LogicalExpr
 {
-  // const Expr* left_;
-  // const Expr* right_;
-  // scanner::Token op_;
+  ExprId left_;
+  ExprId right_;
+  TokenType op_;
 };
 
-struct GroupingExpr : BaseExpr
+struct GroupingExpr
 {
-  // const Expr* expr_;
+  ExprId expr_;
 };
 
-struct LiteralExpr : BaseExpr
+struct LiteralExpr
 {
-  // const Object* val_;
+  Object val_;
 };
 
-struct UnaryExpr : BaseExpr
+struct UnaryExpr
 {
-  // const Expr* right_;
-  // scanner::Token op_;
+  ExprId right_;
+  TokenType op_;
 };
 
-struct VariableExpr : BaseExpr
+struct VariableExpr
 {
-  // scanner::Token name_;
+  TokenStrId name_;
 };
 
-struct CallExpr : BaseExpr
+struct CallExpr
 {
-  // const Expr* callee_;
+  ExprId callee_;
   // scanner::Token paren_;
-  // const std::vector<const Expr*>* args_;
+  ExprBlockId args_;
 };
 
 struct Expr
@@ -106,9 +102,10 @@ struct Expr
     CALL
   } type_;
 
-  union
+  ExprId id_; //TODO: Do we need this field in every Expr?
+
+  union Data
   {
-    BaseExpr base_;
     ThisExpr this_;
     SuperExpr super_;
     GetExpr get_;
@@ -121,7 +118,7 @@ struct Expr
     UnaryExpr unary_;
     VariableExpr variable_;
     CallExpr call_;
-  };
+  } daa;
 };
 
 static const char* ExprTypeToString(Expr::Type type)

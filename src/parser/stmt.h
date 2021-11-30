@@ -7,17 +7,20 @@
 namespace ilang
 {
 
+using StmtId = int32_t;
+using StmtBlockId = int32_t;
+
 struct ReturnStmt
 {
   // scanner::Token tok_;
-  // const Expr* value_;
+  ExprId value_;
 };
 
 struct DefStmt
 {
-  // scanner::Token name_;
-  // const std::vector<scanner::Token>* value_;
-  // const std::vector<const Stmt*>* value_;
+  TokenStrId name_;
+  StrBlockId params_;
+  StmtBlockId body_;
 };
 
 struct ClassStmt
@@ -29,25 +32,25 @@ struct ClassStmt
 
 struct IfStmt
 {
-  // const Expr* condition_;
-  // const Stmt* branch_true_;
-  // const Stmt* branch_false_;
+  ExprId condition_;
+  StmtId true_branch_;
+  StmtId false_branch_;
 };
 
 struct BlockStmt
 {
-  // const std::vector<const Stmt*>* statements_;
+  StmtBlockId statements_;
 };
 
 struct ExpressionStmt
 {
-  // const Expr* expr_;
+  ExprId expr_;
 };
 
 struct WhileStmt
 {
-  // const Expr* condition_;
-  // const Stmt* body_;
+  ExprId condition_;
+  StmtId body_;
 };
 
 struct Stmt

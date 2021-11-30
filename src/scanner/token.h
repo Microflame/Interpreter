@@ -12,6 +12,7 @@ namespace ilang
 
 using TokenId = int32_t;
 using TokenStrId = int32_t;
+using StrBlockId = int32_t;
 
 struct TokenMeta
 {
@@ -107,6 +108,8 @@ public:
     ss << ")";
     return ss.str();
   }
+
+  const std::string& GetString(TokenStrId id) const { return str_buffer_[id]; }
 
 
   TokenMeta MakeTokenMeta(TokenType type)
