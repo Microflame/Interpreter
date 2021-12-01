@@ -2,17 +2,15 @@
 
 #include <string>
 #include <sstream>
+#include <vector>
 
 #include "token_type.h"
 #include "util/string_tools.h"
+#include "types.h"
 
 namespace ilang
 {
 
-
-using TokenId = int32_t;
-using TokenStrId = int32_t;
-using StrBlockId = int32_t;
 
 struct TokenMeta
 {

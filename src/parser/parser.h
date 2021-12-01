@@ -7,6 +7,7 @@
 #include "expr.h"
 #include "stmt.h"
 #include "util/string_tools.h"
+#include "expr_stmt_pool.h"
 
 namespace ilang
 {
@@ -33,7 +34,7 @@ public:
     while (1)
     {
       while (IsAtEndStatement())
-        ++cur_;
+        Advance();;
       if (!Remaining())
         break;
       statements.push_back(ParseDeclarationOrStatement());
@@ -59,45 +60,74 @@ private:
     return expr_stmt_pool_.PushStmt(stmt);
   }
 
-  StmtId AddDefStmt()
+  template <typename T>
+  StmtId AddStmt(T stmt_data)
+  {
+    return AddStmt({stmt_data.TYPE, stmt_data});
+  }
+
+  StmtId AddDefStmt(TokenStrId name, StrBlockId params, StmtBlockId body)
   {
     Stmt stmt = {Stmt::DEF};
-    stmt.def_ = {.name_=0, .params_=0, .body_=0};
+    stmt.def_ =
+    {
+      .name_ = name,
+      .params_ = params,
+      .body_= body
+    };
     return AddStmt(stmt);
   }
 
-  StmtId AddReturnStmt()
+  StmtId AddReturnStmt(ExprId value)
   {
     Stmt stmt = {Stmt::RETURN};
-    stmt.return_ = {};
+    stmt.return_ =
+    {
+      .value_ = value
+    };
     return AddStmt(stmt);
   }
 
-  StmtId AddWhileStmt()
+  StmtId AddWhileStmt(ExprId condition, StmtId body)
   {
     Stmt stmt = {Stmt::WHILE};
-    stmt.while_ = {};
+    stmt.while_ =
+    {
+      .condition_ = condition,
+      .body_ = body
+    };
     return AddStmt(stmt);
   }
 
-  StmtId AddIfStmt()
+  StmtId AddIfStmt(ExprId condition, StmtId true_branch, StmtId false_branch)
   {
     Stmt stmt = {Stmt::IF};
-    stmt.if_ = {};
+    stmt.if_ =
+    {
+      .condition_ = condition,
+      .true_branch_ = true_branch,
+      .false_branch_ = false_branch
+    };
     return AddStmt(stmt);
   }
 
-  StmtId AddBlockStmt()
+  StmtId AddBlockStmt(StmtBlockId statements)
   {
     Stmt stmt = {Stmt::BLOCK};
-    stmt.block_ = {};
+    stmt.block_ =
+    {
+      .statements_ = statements
+    };
     return AddStmt(stmt);
   }
 
-  StmtId AddExpressionStmt()
+  StmtId AddExpressionStmt(ExprId expr)
   {
     Stmt stmt = {Stmt::EXPRESSION};
-    stmt.expression_ = {};
+    stmt.expression_ =
+    {
+      .expr_ = expr
+    };
     return AddStmt(stmt);
   }
 
@@ -108,51 +138,104 @@ private:
     return expr_stmt_pool_.PushExpr(expr);
   }
 
-  ExprId AddAssignExpr()
+  ExprId AddAssignExpr(ExprId value, TokenStrId name)
   {
     Expr expr = {Expr::ASSIGN};
+    expr.assign_ =
+    {
+      .value_ = value,
+      .name_ = name
+    };
     return AddExpr(expr);
   }
 
-  ExprId AddSetExpr()
+  ExprId AddSetExpr(ExprId object, ExprId value, TokenStrId name)
   {
     Expr expr = {Expr::SET};
+    expr.set_ =
+    {
+      .object_ = object,
+      .value_ = value,
+      .name_ = name
+    };
     return AddExpr(expr);
   }
 
-  ExprId AddLogicalExpr()
+  ExprId AddLogicalExpr(ExprId left, ExprId right, TokenType op)
   {
     Expr expr = {Expr::LOGICAL};
+    expr.logical_ =
+    {
+      .left_ = left,
+      .right_ = right,
+      .op_ = op
+    };
     return AddExpr(expr);
   }
 
-  ExprId AddBinaryExpr()
+  ExprId AddBinaryExpr(ExprId left, ExprId right, TokenType op)
   {
     Expr expr = {Expr::BINARY};
+    expr.binary_ =
+    {
+      .left_ = left,
+      .right_ = right,
+      .op_ = op
+    };
     return AddExpr(expr);
   }
 
-  ExprId AddUnaryExpr()
+  ExprId AddComparisonExpr(ExprBlockId comparables, TokenTypeBlockId ops)
+  {
+    Expr expr = {Expr::COMPARISON};
+    expr.comparison_ =
+    {
+      .comparables_ = comparables,
+      .ops_ = ops
+    };
+    return AddExpr(expr);
+  }
+
+  ExprId AddUnaryExpr(ExprId right, TokenType op)
   {
     Expr expr = {Expr::UNARY};
+    expr.unary_ =
+    {
+      .right_ = right,
+      .op_ = op
+    };
     return AddExpr(expr);
   }
 
-  ExprId AddGetExpr()
+  ExprId AddGetExpr(ExprId object, TokenStrId name)
   {
     Expr expr = {Expr::GET};
+    expr.get_ =
+    {
+      .object_ = object,
+      .name_ = name
+    };
     return AddExpr(expr);
   }
 
-  ExprId AddCallExpr()
+  ExprId AddCallExpr(ExprId callee, ExprBlockId args)
   {
     Expr expr = {Expr::CALL};
+    expr.call_ =
+    {
+      .callee_ = callee,
+      .args_ = args
+    };
     return AddExpr(expr);
   }
 
-  ExprId AddLiteralExpr()
+  ExprId AddLiteralExpr(Object val)
   {
     Expr expr = {Expr::LITERAL};
+    expr.literal_ =
+    {
+      .val_ = val
+    };
     return AddExpr(expr);
   }
 
@@ -162,27 +245,31 @@ private:
     return AddExpr(expr);
   }
 
-  ExprId AddVariableExpr()
+  ExprId AddVariableExpr(TokenStrId name)
   {
     Expr expr = {Expr::VARIABLE};
+    expr.variable_ =
+    {
+      .name_ = name
+    };
     return AddExpr(expr);
   }
 
   StmtId ParseDeclarationOrStatement()
   {
     while (IsAtEndStatement())
-      ++cur_;
+      Advance();;
 
     try
     {
       if (GetCurrentTokenType() == TokenType::DEF)
       {
-        ++cur_;
+        Advance();;
         return ParseFunction();
       }
       if (GetCurrentTokenType() == TokenType::CLASS)
       {
-        ++cur_;
+        Advance();;
         return -1;
         //return ParseClassDeclaration();
       }
@@ -200,20 +287,24 @@ private:
 
   StmtId ParseFunction()
   {
-    Token name = ConsumeToken(TokenType::IDENTIFIER);
+    TokenStrId name = ConsumeToken(TokenType::IDENTIFIER).data_.str_idx_;
 
-    std::vector<Token> params;
-
+    StrBlockId params_block = -1;
     ConsumeToken(TokenType::LEFT_PAREN);
+
     if (GetCurrentTokenType() != TokenType::RIGHT_PAREN)
     {
-      params.push_back(GetCurrentTokenAndIncremetIterator());
+      params_block = expr_stmt_pool_.MakeNewStrBlock();
+      TokenStrId param_id = ConsumeToken(TokenType::IDENTIFIER).data_.str_idx_;
+      expr_stmt_pool_.str_blocks_[params_block].push_back(param_id);
       while (GetCurrentTokenType() == TokenType::COMMA)
       {
-        ++cur_;
-        params.push_back(GetCurrentTokenAndIncremetIterator());
+        Advance();;
+        param_id = ConsumeToken(TokenType::IDENTIFIER).data_.str_idx_;
+        expr_stmt_pool_.str_blocks_[params_block].push_back(param_id);
       }
     }
+
     ConsumeToken(TokenType::RIGHT_PAREN);
     ConsumeToken(TokenType::COLON);
     ConsumeToken(TokenType::NEWLINE);
@@ -221,20 +312,20 @@ private:
 
     StmtBlockId body = ParseBlock();
 
-    return AddDefStmt();
+    return AddDefStmt(name, params_block, body);
   }
 
   // Ptr<stmt::Stmt> ParseClassDeclaration()
   // {
   //   ExpectToken(TokenType::IDENTIFIER, "identifier", false);
-  //   Ptr<scanner::Token> name = std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator());
+  //   Ptr<scanner::Token> name = std::make_shared<scanner::Token>(Pop());
 
   //   Ptr<Variable> super;
   //   if (GetCurrentTokenType() == TokenType::COLON)
   //   {
-  //     ++cur_;
+  //     Advance();;
   //     ExpectToken(TokenType::IDENTIFIER, "identifier", false);
-  //     super = std::make_shared<Variable>(std::make_shared<scanner::Token>(GetCurrentTokenAndIncremetIterator()), id_++);
+  //     super = std::make_shared<Variable>(std::make_shared<scanner::Token>(Pop()), id_++);
   //   }
 
   //   ExpectToken(TokenType::LEFT_BRACE, "{");
@@ -254,10 +345,10 @@ private:
   {
     switch (GetCurrentTokenType())
     {
-      case TokenType::IF:     ++cur_; return ParseIfStmt();
-      case TokenType::WHILE:  ++cur_; return ParseWhileStmt();
-      case TokenType::INDENT: ++cur_; return ParseBlockStmt();
-      case TokenType::RETURN: ++cur_; return ParseReturnStmt();
+      case TokenType::IF:     Advance();; return ParseIfStmt();
+      case TokenType::WHILE:  Advance();; return ParseWhileStmt();
+      case TokenType::INDENT: Advance();; return ParseBlockStmt();
+      case TokenType::RETURN: Advance();; return ParseReturnStmt();
       default: break;
     }
 
@@ -266,7 +357,7 @@ private:
 
   StmtId ParseReturnStmt()
   {
-    ExprId value;
+    ExprId value = -1;
     if (!IsAtEndStatement())
     {
       value = ParseExpr();
@@ -274,7 +365,7 @@ private:
 
     ConsumeEndStatement();
 
-    return AddReturnStmt();
+    return AddReturnStmt(value);
   }
 
   StmtId ParseWhileStmt()
@@ -286,7 +377,7 @@ private:
 
     StmtId body = ParseBlockStmt();
 
-    return AddWhileStmt();
+    return AddWhileStmt(condition, body);
   }
 
   StmtId ParseIfStmt()
@@ -296,18 +387,18 @@ private:
     ConsumeToken(TokenType::NEWLINE);
     ConsumeToken(TokenType::INDENT);
 
-    StmtId stmt_true = ParseBlockStmt();
-    StmtId stmt_false = -1;
+    StmtId true_branch = ParseBlockStmt();
+    StmtId false_branch = -1;
     if (GetCurrentTokenType() == TokenType::ELSE)
     {
-      ++cur_;
+      Advance();;
       ConsumeToken(TokenType::COLON);
       ConsumeToken(TokenType::NEWLINE);
       ConsumeToken(TokenType::INDENT);
-      stmt_false = ParseBlockStmt();
+      false_branch = ParseBlockStmt();
     }
 
-    return AddIfStmt();
+    return AddIfStmt(condition, true_branch, false_branch);
   }
 
   StmtBlockId ParseBlock()
@@ -316,7 +407,8 @@ private:
 
     while (GetCurrentTokenType() != TokenType::UNINDENT && Remaining())
     {
-      Stmt stmt = expr_stmt_pool_.statements_[ParseDeclarationOrStatement()];
+      StmtId stmt_id = ParseDeclarationOrStatement();
+      Stmt stmt = expr_stmt_pool_.statements_[stmt_id];
       expr_stmt_pool_.stmt_blocks_[block_id].push_back(stmt);
     }
 
@@ -327,7 +419,7 @@ private:
   StmtId ParseBlockStmt()
   {
     StmtBlockId block_id = ParseBlock();
-    return AddBlockStmt();
+    return AddBlockStmt(block_id);
   }
 
   StmtId ParseExpressionStmt()
@@ -335,7 +427,7 @@ private:
     ExprId expr = ParseExpr();
 
     ConsumeEndStatement();
-    return AddExpressionStmt();
+    return AddExpressionStmt(expr);
   }
 
 
@@ -357,19 +449,18 @@ private:
 
     if (GetCurrentTokenType() == TokenType::EQUAL)
     {
-      Token tok = GetCurrentTokenAndIncremetIterator();
+      Advance();;
       ExprId value = ParseAssign();
-      Expr::Type lvalue_type = expr_stmt_pool_.expressions_[lvalue_id].type_;
+      Expr lvalue = expr_stmt_pool_.expressions_[lvalue_id];
+      Expr::Type lvalue_type = lvalue.type_;
 
       if (lvalue_type == Expr::VARIABLE)
       {
-        // expr = std::make_shared<Assign>(variable.name_, value, id_++);
-        return AddAssignExpr();
+        return AddAssignExpr(value, lvalue.variable_.name_);
       }
       else if (lvalue_type == Expr::GET)
       {
-        // expr = std::make_shared<Set>(get.object_, ptr->name_, value);
-        return AddSetExpr();
+        return AddSetExpr(lvalue.get_.object_, value, lvalue.get_.name_);
       }
       else
       {
@@ -386,10 +477,9 @@ private:
 
     while (GetCurrentTokenType() == TokenType::OR)
     {
-      Token or_token = GetCurrentTokenAndIncremetIterator();
+      Token or_token = Pop();
       ExprId right = ParseAnd();
-      // expr = std::make_shared<Logical>(expr, tok, right);
-      return AddLogicalExpr();
+      expr = AddLogicalExpr(expr, right, or_token.meta_.type_);
     }
 
     return expr;
@@ -397,29 +487,13 @@ private:
 
   ExprId ParseAnd()
   {
-    ExprId expr = ParseEquality();
-
-    while (GetCurrentTokenType() == TokenType::AND)
-    {
-      Token and_token = GetCurrentTokenAndIncremetIterator();
-      ExprId right = ParseAnd();
-      // expr = std::make_shared<Logical>(expr, tok, right);
-      return AddLogicalExpr();
-    }
-
-    return expr;
-  }
-
-  ExprId ParseEquality()
-  {
     ExprId expr = ParseComparison();
 
-    while (IsAtEqualityCheck())
+    while (GetCurrentTokenType() == TokenType::AND) //TODO: 'if' shall be fine here
     {
-      Token op = GetCurrentTokenAndIncremetIterator();
-      ExprId right = ParseComparison();
-      // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
-      return AddBinaryExpr();
+      Token and_token = Pop();
+      ExprId right = ParseAnd();
+      expr = AddLogicalExpr(expr, right, and_token.meta_.type_);
     }
 
     return expr;
@@ -429,14 +503,22 @@ private:
   {
     ExprId expr = ParseAddition();
 
-    while (IsAtComparison())
+    if (IsAtComparison() || IsAtEqualityCheck())
     {
-      Token op = GetCurrentTokenAndIncremetIterator();
-      ExprId right = ParseAddition();
-      // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
-      return AddBinaryExpr();
+      ExprBlockId comparables = expr_stmt_pool_.MakeNewExprBlock();
+      TokenTypeBlockId ops = expr_stmt_pool_.MakeNewTokenTypeBlock();
+      Expr cmp = expr_stmt_pool_.expressions_[expr];
+      expr_stmt_pool_.expr_blocks_[comparables].push_back(cmp);
+      while (IsAtComparison() || IsAtEqualityCheck())
+      {
+        Token op = Pop();
+        expr_stmt_pool_.token_type_blocks_[ops].push_back(op.meta_.type_);
+        ExprId right = ParseAddition();
+        cmp = expr_stmt_pool_.expressions_[right];
+        expr_stmt_pool_.expr_blocks_[comparables].push_back(cmp);
+      }
+      return AddComparisonExpr(comparables, ops);
     }
-
     return expr;
   }
 
@@ -446,10 +528,9 @@ private:
 
     while (IsAtAddSub())
     {
-      Token op = GetCurrentTokenAndIncremetIterator();
+      Token op = Pop();
       ExprId right = ParseMultiplication();
-      // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
-      return AddBinaryExpr();
+      expr = AddBinaryExpr(expr, right, op.meta_.type_);
     }
 
     return expr;
@@ -461,10 +542,9 @@ private:
 
     while (IsAtMulDiv())
     {
-      Token op = GetCurrentTokenAndIncremetIterator();
+      Token op = Pop();
       ExprId right = ParseUnary();
-      // expr = std::make_shared<Binary>(expr, std::make_shared<scanner::Token>(op), right);
-      return AddBinaryExpr();
+      expr = AddBinaryExpr(expr, right, op.meta_.type_);
     }
 
     return expr;
@@ -474,16 +554,15 @@ private:
   {
     if (IsAtUnary())
     {
-      Token op = GetCurrentTokenAndIncremetIterator();
+      Token op = Pop();
       ExprId right = ParseUnary();
-      // return std::make_shared<Unary>(std::make_shared<scanner::Token>(op), right);
-      return AddUnaryExpr();
+      return AddUnaryExpr(right, op.meta_.type_);
     }
 
-    return ParseCall();
+    return ParseCallOrGet();
   }
 
-  ExprId ParseCall()
+  ExprId ParseCallOrGet()
   {
     ExprId expr = ParsePrimary();
 
@@ -491,15 +570,14 @@ private:
     {
       if (GetCurrentTokenType() == TokenType::LEFT_PAREN)
       {
-        ++cur_;
-        expr = FinishCall(expr);
+        Advance();;
+        expr = ParseCall(expr);
       }
       else if (GetCurrentTokenType() == TokenType::DOT)
       {
-        ++cur_;
-        Token name = GetCurrentTokenAndIncremetIterator();
-        // expr = std::make_shared<Get>(expr, name);
-        expr = AddGetExpr();
+        Advance();;
+        Token name = ConsumeToken(TokenType::IDENTIFIER);
+        expr = AddGetExpr(expr, name.data_.str_idx_);
       }
       else
       {
@@ -510,70 +588,53 @@ private:
     return expr;
   }
 
-  ExprId FinishCall(ExprId callee)
+  ExprId ParseCall(ExprId callee)
   {
-    ExprBlockId block_id = expr_stmt_pool_.MakeNewExprBlock();
+    ExprBlockId args = expr_stmt_pool_.MakeNewExprBlock();
 
     if (GetCurrentTokenType() != TokenType::RIGHT_PAREN)
     {
       ExprId expr_id = ParseExpr();
       Expr expr = expr_stmt_pool_.expressions_[expr_id];
-      expr_stmt_pool_.expr_blocks_[block_id].push_back(expr);
+      expr_stmt_pool_.expr_blocks_[args].push_back(expr);
       while (GetCurrentTokenType() == TokenType::COMMA)
       {
-        ++cur_;
+        Advance();;
         ExprId expr_id = ParseExpr();
         Expr expr = expr_stmt_pool_.expressions_[expr_id];
-        expr_stmt_pool_.expr_blocks_[block_id].push_back(expr);
+        expr_stmt_pool_.expr_blocks_[args].push_back(expr);
       }
     }
 
-    Token tok = ConsumeToken(TokenType::RIGHT_PAREN);
+    ConsumeToken(TokenType::RIGHT_PAREN);
 
-    // return std::make_shared<Call>(callee, tok_ptr, args);
-    return AddCallExpr();
+    return AddCallExpr(callee, args);
   }
 
   ExprId ParsePrimary()
   {
-    if (IsAtLiteral())
+    Object object;
+    if (TryGetLiteral(&object))
     {
-      Token op = GetCurrentTokenAndIncremetIterator();
-      return AddLiteralExpr();
+      Advance();;
+      return AddLiteralExpr(object);
     }
 
     if (GetCurrentTokenType() == TokenType::THIS)
     {
-      Token op = GetCurrentTokenAndIncremetIterator();
+      Advance();;
       return AddThisExpr();
-      // return std::make_shared<This>(std::make_shared<scanner::Token>(op), id_++);
     }
 
-    // if (GetCurrentTokenType() == TokenType::SUPER)
-    // {
-    //   const scanner::Token& name = GetCurrentTokenAndIncremetIterator();
-    //   ExpectToken(TokenType::DOT, ".");
-    //   const scanner::Token& method = ExpectToken(TokenType::IDENTIFIER, "method name");
-    //   return std::make_shared<Super>(std::make_shared<scanner::Token>(name),
-    //                                  std::make_shared<scanner::Token>(method),
-    //                                  id_++);
-    // }
-
     Token op = ConsumeToken(TokenType::IDENTIFIER);
-      // return std::make_shared<Variable>(std::make_shared<scanner::Token>(op), id_++);
-    return AddVariableExpr();
-
-    // ExpectToken(TokenType::LEFT_PAREN, "expression");
-    // ExprId expr = ParseExpr();
-    // ExpectToken(TokenType::RIGHT_PAREN, ")");
-    // return std::make_shared<Grouping>(expr);
+    return AddVariableExpr(op.data_.str_idx_);
   }
 
   Token GetCurrentToken() const { return kTokens[cur_]; }
 
   TokenType GetCurrentTokenType() const { return kTokens[cur_].meta_.type_; }
 
-  Token GetCurrentTokenAndIncremetIterator() { return kTokens[cur_++]; }
+  Token Pop() { return kTokens[cur_++]; }
 
   Token AssertToken(TokenType type)
   {
@@ -624,6 +685,12 @@ private:
     return cur_token;
   }
 
+  size_t Advance()
+  {
+    // std::cout << GetTokenTypeName(kTokens[cur_ + 1].meta_.type_) << '\n';
+    return ++cur_;
+  }
+
   bool Remaining()
   {
     return GetCurrentTokenType() != TokenType::END_OF_FILE;
@@ -635,14 +702,14 @@ private:
     {
       if (IsAtEndStatement())
       {
-        ++cur_;
+        Advance();;
         return true;
       }
       if (IsAtSynchronizePivot())
       {
         return true;
       }
-      ++cur_;
+      Advance();;
     }
     return false;
   }
@@ -710,6 +777,22 @@ private:
            type == TokenType::STRING      ||
            type == TokenType::INT_LITERAL ||
            type == TokenType::FLOAT_LITERAL;
+  }
+
+  bool TryGetLiteral(Object* object)
+  {
+    Token token = GetCurrentToken();
+    switch (token.meta_.type_)
+    {
+      case TokenType::TRUE: *object = MakeBool(true); break;
+      case TokenType::FALSE: *object = MakeBool(false); break;
+      case TokenType::NONE: *object = MakeNone(); break;
+      case TokenType::STRING: *object = MakeString(token.data_.str_idx_); break;
+      case TokenType::INT_LITERAL: *object = MakeInt(token.data_.int_); break;
+      case TokenType::FLOAT_LITERAL: *object = MakeFloat(token.data_.fp_); break;
+      default: return false;
+    }
+    return true;
   }
 
 };

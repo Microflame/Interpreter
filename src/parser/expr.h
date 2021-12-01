@@ -2,14 +2,12 @@
 
 #include <vector>
 
-#include "scanner/token.h"
 #include "common/object.h"
+#include "types.h"
 
 namespace ilang
 {
 
-using ExprId = int32_t;
-using ExprBlockId = int32_t;
 
 struct ThisExpr
 {
@@ -37,7 +35,6 @@ struct SetExpr
 
 struct AssignExpr
 {
-  ExprId left_;
   ExprId value_;
   TokenStrId name_;
 };
@@ -47,6 +44,12 @@ struct BinaryExpr
   ExprId left_;
   ExprId right_;
   TokenType op_;
+};
+
+struct ComparisonExpr
+{
+  ExprBlockId comparables_;
+  TokenTypeBlockId ops_;
 };
 
 struct LogicalExpr
@@ -80,7 +83,6 @@ struct VariableExpr
 struct CallExpr
 {
   ExprId callee_;
-  // scanner::Token paren_;
   ExprBlockId args_;
 };
 
@@ -94,6 +96,7 @@ struct Expr
     SET,
     ASSIGN,
     BINARY,
+    COMPARISON,
     LOGICAL,
     GROUPING,
     LITERAL,
@@ -104,7 +107,7 @@ struct Expr
 
   ExprId id_; //TODO: Do we need this field in every Expr?
 
-  union Data
+  union
   {
     ThisExpr this_;
     SuperExpr super_;
@@ -112,31 +115,33 @@ struct Expr
     SetExpr set_;
     AssignExpr assign_;
     BinaryExpr binary_;
+    ComparisonExpr comparison_;
     LogicalExpr logical_;
     GroupingExpr grouping_;
     LiteralExpr literal_;
     UnaryExpr unary_;
     VariableExpr variable_;
     CallExpr call_;
-  } daa;
+  };
 };
 
 static const char* ExprTypeToString(Expr::Type type)
 {
   switch (type)
   {
-    case Expr::THIS:      return "THIS";
-    case Expr::SUPER:     return "SUPER";
-    case Expr::GET:       return "GET";
-    case Expr::SET:       return "SET";
-    case Expr::ASSIGN:    return "ASSIGN";
-    case Expr::BINARY:    return "BINARY";
-    case Expr::LOGICAL:   return "LOGICAL";
-    case Expr::GROUPING:  return "GROUPING";
-    case Expr::LITERAL:   return "LITERAL";
-    case Expr::UNARY:     return "UNARY";
-    case Expr::VARIABLE:  return "VARIABLE";
-    case Expr::CALL:      return "CALL";
+    case Expr::THIS:        return "THIS";
+    case Expr::SUPER:       return "SUPER";
+    case Expr::GET:         return "GET";
+    case Expr::SET:         return "SET";
+    case Expr::ASSIGN:      return "ASSIGN";
+    case Expr::BINARY:      return "BINARY";
+    case Expr::COMPARISON:  return "COMPARISON";
+    case Expr::LOGICAL:     return "LOGICAL";
+    case Expr::GROUPING:    return "GROUPING";
+    case Expr::LITERAL:     return "LITERAL";
+    case Expr::UNARY:       return "UNARY";
+    case Expr::VARIABLE:    return "VARIABLE";
+    case Expr::CALL:        return "CALL";
   }
   throw std::runtime_error("[ExprTypeToString] Bad type");
 }

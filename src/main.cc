@@ -25,6 +25,43 @@ std::string ReadFile(const char* path)
   return source;
 }
 
+void Print(StmtId id, const ExprStmtPool& es_pool)
+{
+  Stmt stmt = es_pool.statements_[id];
+  std::cout << StmtTypeToString(stmt.type_) << '\n';
+  switch (stmt.type_)
+  {
+    case Stmt::RETURN:
+    {
+      
+    }
+    case Stmt::DEF:
+    {
+      
+    }
+    case Stmt::CLASS:
+    {
+      
+    }
+    case Stmt::IF:
+    {
+      
+    }
+    case Stmt::BLOCK:
+    {
+      
+    }
+    case Stmt::EXPRESSION:
+    {
+      
+    }
+    case Stmt::WHILE:
+    {
+      
+    }
+  }
+}
+
 int ExecuteFile(const char* path)
 {
   std::string source = ReadFile(path);
@@ -44,18 +81,18 @@ int ExecuteFile(const char* path)
   //   std::cout << token_spawner.ToString(t) << '\n';
   // }
 
-
-  Parser parser(source, tokens);
-  std::vector<const Stmt*> statements = parser.Parse();
+  ExprStmtPool es_pool;
+  Parser parser(source, tokens, &es_pool);
+  std::vector<StmtId> statements = parser.Parse();
 
   if (parser.HasError())
   {
     return 1;
   }
 
-  for (const Stmt* stmt: statements)
+  for (StmtId stmt: statements)
   {
-    std::cout << StmtTypeToString(stmt->type_) << '\n';
+    Print(stmt, es_pool);
   }
 
 

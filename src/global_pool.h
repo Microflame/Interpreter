@@ -1,10 +1,10 @@
 #pragma once
 
-#include "scanner/token.h"
-#include "parser/expr_stmt_pool.h"
-
 namespace ilang
 {
+
+class TokenSpawner;
+class ExprStmtPool;
 
 class GlobalPool
 {

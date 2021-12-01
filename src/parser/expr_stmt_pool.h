@@ -40,11 +40,26 @@ struct ExprStmtPool
     return id;
   }
 
+  StrBlockId MakeNewStrBlock()
+  {
+    StrBlockId id = str_blocks_.size();
+    str_blocks_.emplace_back();
+    return id;
+  }
+
+  TokenTypeBlockId MakeNewTokenTypeBlock()
+  {
+    TokenTypeBlockId id = token_type_blocks_.size();
+    token_type_blocks_.emplace_back();
+    return id;
+  }
+
   std::vector<Stmt> statements_;
   std::vector<Expr> expressions_;
   std::vector<std::vector<Stmt>> stmt_blocks_;
   std::vector<std::vector<Expr>> expr_blocks_;
   std::vector<std::vector<TokenStrId>> str_blocks_;
+  std::vector<std::vector<TokenType>> token_type_blocks_;
 };
 
 } // namespace ilang

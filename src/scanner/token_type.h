@@ -2,6 +2,8 @@
 
 #include <stdexcept>
 
+#include "types.h"
+
 namespace ilang
 {
 
