@@ -8,7 +8,7 @@ namespace ilang
 {
 
 
-#define INTERP_FORALL_TOKEN_TYPES(_) \
+#define ILANG_FORALL_TOKEN_TYPES(_) \
   /* Single-character tokens. */ \
   _(LEFT_PAREN) \
   _(RIGHT_PAREN) \
@@ -67,7 +67,7 @@ namespace ilang
 enum class TokenType : uint8_t
 {
 #define INTERP_PUT_WITH_COMMA(_) _,
-  INTERP_FORALL_TOKEN_TYPES(INTERP_PUT_WITH_COMMA)
+  ILANG_FORALL_TOKEN_TYPES(INTERP_PUT_WITH_COMMA)
 #undef INTERP_PUT_WITH_COMMA
 };
 
@@ -76,12 +76,10 @@ static const char* GetTokenTypeName(TokenType type)
   switch (type)
   {
 #define INTERP_PUT_TOKEN_NAME(_) case TokenType::_: { return #_; }
-    INTERP_FORALL_TOKEN_TYPES(INTERP_PUT_TOKEN_NAME)
+    ILANG_FORALL_TOKEN_TYPES(INTERP_PUT_TOKEN_NAME)
 #undef INTERP_PUT_TOKEN_NAME
   }
   throw std::runtime_error("invalid token type");
 }
-
-#undef INTERP_FORALL_TOKEN_TYPES
 
 } // namespace ilang

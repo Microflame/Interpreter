@@ -3,7 +3,6 @@
 #include <stdexcept>
 
 #include "types.h"
-#include "scanner/token.h"
 
 namespace ilang
 {

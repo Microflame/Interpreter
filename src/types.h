@@ -1,5 +1,7 @@
 #pragma once
 
+#include "token_type.h"
+
 namespace ilang
 {
 
