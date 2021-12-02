@@ -5,7 +5,7 @@
 #include <cstring>
 
 #include "token.h"
-#include "logger.h"
+#include "util/logger.h"
 #include "util/string_tools.h"
 
 namespace ilang

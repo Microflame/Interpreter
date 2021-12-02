@@ -2,8 +2,8 @@
 
 #include <string>
 
-#include "parser/expr.h"
-#include "parser/stmt.h"
+#include "expr.h"
+#include "stmt.h"
 #include "types.h"
 
 namespace ilang

@@ -1,14 +1,10 @@
 #pragma once
 
-#include <vector>
-
 #include "expr.h"
 
 namespace ilang
 {
 
-using StmtId = int32_t;
-using StmtBlockId = int32_t;
 
 struct ReturnStmt
 {
@@ -78,19 +74,6 @@ struct Stmt
   };
 };
 
-static const char* StmtTypeToString(Stmt::Type type)
-{
-  switch (type)
-  {
-    case Stmt::RETURN:      return "RETURN";
-    case Stmt::DEF:         return "DEF";
-    case Stmt::CLASS:       return "CLASS";
-    case Stmt::IF:          return "IF";
-    case Stmt::BLOCK:       return "BLOCK";
-    case Stmt::EXPRESSION:  return "EXPRESSION";
-    case Stmt::WHILE:       return "WHILE";
-  }
-  throw std::runtime_error("[StmtTypeToString] Bad type");
-}
+const char* StmtTypeToString(Stmt::Type type);
 
 } // namespace ilang

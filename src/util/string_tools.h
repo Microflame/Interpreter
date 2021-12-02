@@ -6,8 +6,8 @@ namespace util {
 
 struct Position
 {
-    size_t line;
-    size_t column;
+  size_t line;
+  size_t column;
 };
 
 namespace string_tools {

@@ -3,7 +3,7 @@
 namespace ilang
 {
 
-static const char* GetTokenTypeName(TokenType type)
+const char* GetTokenTypeName(TokenType type)
 {
   switch (type)
   {

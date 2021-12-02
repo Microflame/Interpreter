@@ -2,12 +2,12 @@
 
 #include <vector>
 
-#include "scanner/token.h"
-#include "logger.h"
+#include "token.h"
 #include "expr.h"
 #include "stmt.h"
-#include "util/string_tools.h"
 #include "expr_stmt_pool.h"
+#include "util/string_tools.h"
+#include "util/logger.h"
 
 namespace ilang
 {

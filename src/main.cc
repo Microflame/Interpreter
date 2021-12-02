@@ -3,11 +3,11 @@
 #include <streambuf>
 
 
-#include "scanner/scanner.h"
-#include "parser/expr.h"
-#include "parser/stmt.h"
-#include "parser/parser.h"
-#include "es_to_string.h"
+#include "scanner.h"
+#include "expr.h"
+#include "stmt.h"
+#include "parser.h"
+#include "util/es_to_string.h"
 // #include "resolver/resolver.h"
 // #include "interpreter/interpreter.h"
 
@@ -316,11 +316,11 @@ int ExecuteFile(const char* path)
     return 1;
   }
 
-  // Pools pools{es_pool, token_spawner};
-  // for (StmtId stmt: statements)
-  // {
-  //   std::cout << StmtBlockToString(stmt, pools);
-  // }
+  Pools pools{es_pool, token_spawner};
+  for (StmtId stmt: statements)
+  {
+    std::cout << StmtBlockToString(stmt, pools);
+  }
 
 
 

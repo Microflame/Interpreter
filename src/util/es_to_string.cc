@@ -3,7 +3,7 @@
 #include <sstream>
 #include <vector>
 
-#include "parser/expr_stmt_pool.h"
+#include "expr_stmt_pool.h"
 
 namespace ilang
 {

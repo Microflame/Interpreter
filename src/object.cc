@@ -1,81 +1,75 @@
 #include "object.h"
 
-// #include "callable.h"
-// #include "class.h"
-// #include "instance.h"
+#include <stdexcept>
 
 namespace ilang
 {
 
-// std::string ToStringImpl(const std::string& val)
-// {
-//   return val;
-// }
+const char* Object::GetTypeName(Type type)
+{
+  switch (type)
+  {
+    case INT: return "INT";
+    case FLOAT: return "FLOAT";
+    case STRING: return "STRING";
+    case IDENTIFIER: return "IDENTIFIER";
+    case BOOLEAN: return "BOOLEAN";
+    case CALLABLE: return "CALLABLE";
+    case CLASS: return "CLASS";
+    case INSTANCE: return "INSTANCE";
+    case NONE: return "NONE";
+  }
+  throw std::runtime_error("[Object::GetTypeName] Bad type");
+}
 
-// std::string ToStringImpl(const std::shared_ptr<ICallable>& val)
-// {
-//   return "<callable: " + val->GetName() + ">";
-// }
+void Object::AsssertType(Type type) const
+{
+  if (type_ != type)
+  {
+    std::string exp_type = GetTypeName(type);
+    throw std::logic_error("Assumed type " + exp_type + " for object of type " + GetTypeName(type_));
+  }
+}
 
-// std::string ToStringImpl(const std::shared_ptr<IClass>& val)
-// {
-//   return "<class: " + val->GetName() + ">";
-// }
+const char* Object::GetTypeName() const
+{
+  return GetTypeName(type_);
+}
 
-// std::string ToStringImpl(const std::shared_ptr<IInstance>& val)
-// {
-//   return "<instance of: " + val->GetTypeName() + ">";
-// }
+Object::Type Object::GetType() const
+{
+  return type_;
+}
 
-// ICallable& Object::AsCallable() const
-// {
-//   if (type_ == CLASS)
-//   {
-//     return *held_->As<std::shared_ptr<IClass>>();
-//   }
-//   AssumeType(CALLABLE);
-//   return *held_->As<std::shared_ptr<ICallable>>();
-// }
+bool Object::IsNumber() const
+{
+  return (type_ == INT) || (type_ == FLOAT);
+}
 
-// Object MakeInt(int64_t val)
-// {
-//   return Object(Object::INT, val);
-// }
 
-// Object MakeFloat(double val)
-// {
-//   return Object(Object::FLOAT, val);
-// }
+Object MakeInt(int64_t val)
+{
+  return {.type_ = Object::INT, .int_=val};
+}
 
-// Object MakeString(const std::string& val)
-// {
-//   return Object(Object::STRING, val);
-// }
+Object MakeFloat(double val)
+{
+  return {.type_ = Object::FLOAT, .fp_=val};
+}
 
-// Object MakeBool(bool val)
-// {
-//   return Object(Object::BOOLEAN, val);
-// }
+Object MakeString(TokenStrId val)
+{
+  return {.type_ = Object::STRING, .str_id_=val};
+}
 
-// Object MakeNone()
-// {
-//   return Object();
-// }
+Object MakeBool(bool val)
+{
+  return {.type_ = Object::BOOLEAN, .int_=val};
+}
 
-// Object MakeCallable(std::shared_ptr<common::ICallable> val)
-// {
-//   return Object(Object::CALLABLE, val);
-// }
-
-// Object MakeClass(std::shared_ptr<common::IClass> val)
-// {
-//   return Object(Object::CLASS, val);
-// }
-
-// Object MakeInstance(std::shared_ptr<common::IInstance> val)
-// {
-//   return Object(Object::INSTANCE, val);
-// }
-
+Object MakeNone()
+{
+  return {Object::NONE};
+}
 
 } // namespace ilang

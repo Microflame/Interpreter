@@ -2,6 +2,9 @@
 
 #include <iostream>
 
+namespace ilang
+{
+
 class Logger
 {
 public:
@@ -44,3 +47,5 @@ public:
 private:
   LogLevel log_level_;
 };
+
+} // namespace ilang

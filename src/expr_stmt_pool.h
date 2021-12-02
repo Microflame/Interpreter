@@ -4,7 +4,7 @@
 
 #include "expr.h"
 #include "stmt.h"
-#include "scanner/token.h"
+#include "token_type.h"
 
 namespace ilang
 {
