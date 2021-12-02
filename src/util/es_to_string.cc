@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "expr_stmt_pool.h"
+#include "token.h"
 
 namespace ilang
 {
@@ -111,7 +112,7 @@ std::string ExprToString(Expr expr, Pools pools)
         }
         case (Object::BOOLEAN):
         {
-          ss << e.val_.int_ ? "true" : "false";
+          ss << (e.val_.int_ ? "true" : "false");
           break;
         }
         case (Object::CALLABLE):
@@ -153,7 +154,7 @@ std::string ExprToString(Expr expr, Pools pools)
     case (Expr::CALL):
     {
       CallExpr e = expr.call_;
-      ss << TokenStrToString(e.callee_, pools);
+      ss << ExprToString(e.callee_, pools);
       ss << "(";
       ss << ExprBlockToString(e.args_, pools);
       ss << ")";
@@ -167,6 +168,7 @@ std::string ExprToString(ExprId id, Pools pools)
 {
   if (id < 0) return {};
   Expr expr = pools.es.expressions_[id];
+  return ExprToString(expr, pools);
 }
 
 std::string TokenStrToString(TokenStrId id, Pools pools)
@@ -192,7 +194,7 @@ std::string StmtBlockToString(StmtBlockId id, Pools pools)
   std::stringstream ss;
   for (Stmt stmt: pools.es.stmt_blocks_[id])
   {
-    ss << StmtToString(stmt, pools) << ";\n";
+    ss << StmtToString(stmt, pools);
   }
   return ss.str();
 }
@@ -210,6 +212,7 @@ std::string StmtToString(Stmt stmt, Pools pools)
     case Stmt::DEF:
     {
       DefStmt s = stmt.def_;
+      ss << "Object ";
       ss << TokenStrToString(s.name_, pools);
       ss << "(";
       ss << StrBlockToString(s.params_, pools);
