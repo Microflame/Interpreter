@@ -6,7 +6,7 @@
 namespace ilang {
 
 DEFINE_INDEX(TokenId, int32_t);
-DEFINE_INDEX(TokenStrId, int32_t);
+DEFINE_INDEX(StrId, int32_t);
 DEFINE_INDEX(StrBlockId, int32_t);
 DEFINE_INDEX(ExprId, int32_t);
 DEFINE_INDEX(ExprBlockId, int32_t);

@@ -46,7 +46,7 @@ Object MakeInt(int64_t val) { return {.type_ = Object::INT, .int_ = val}; }
 
 Object MakeFloat(double val) { return {.type_ = Object::FLOAT, .fp_ = val}; }
 
-Object MakeString(TokenStrId val) {
+Object MakeString(StrId val) {
   return {.type_ = Object::STRING, .str_id_ = val};
 }
 

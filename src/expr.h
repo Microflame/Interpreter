@@ -18,18 +18,18 @@ struct SuperExpr {
 
 struct GetExpr {
   ExprId object_;
-  TokenStrId name_;
+  StrId name_;
 };
 
 struct SetExpr {
   ExprId object_;
   ExprId value_;
-  TokenStrId name_;
+  StrId name_;
 };
 
 struct AssignExpr {
   ExprId value_;
-  TokenStrId name_;
+  StrId name_;
 };
 
 struct BinaryExpr {
@@ -63,7 +63,7 @@ struct UnaryExpr {
 };
 
 struct VariableExpr {
-  TokenStrId name_;
+  StrId name_;
 };
 
 struct CallExpr {

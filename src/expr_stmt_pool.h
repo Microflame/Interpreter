@@ -8,17 +8,28 @@
 
 namespace ilang {
 
+using StmtBlock = std::vector<Stmt>;
+using ExprBlock = std::vector<Expr>;
+using StrBlock = std::vector<StrId>;
+using TokenTypeBlock = std::vector<TokenType>;
+
 struct ExprStmtPool {
   StmtId PushStmt(Stmt stmt) {
-    StmtId id = statements_.size();
-    statements_.push_back(stmt);
+    StmtId id = stmts_.size();
+    stmts_.push_back(stmt);
     return id;
   }
 
   ExprId PushExpr(Expr expr) {
-    ExprId id = expressions_.size();
+    ExprId id = exprs_.size();
     expr.id_ = id;
-    expressions_.push_back(expr);
+    exprs_.push_back(expr);
+    return id;
+  }
+
+  StrId PushStr(std::string&& str) {
+    StrId id = strs_.size();
+    strs_.emplace_back(std::move(str));
     return id;
   }
 
@@ -46,12 +57,13 @@ struct ExprStmtPool {
     return id;
   }
 
-  std::vector<Stmt> statements_;
-  std::vector<Expr> expressions_;
-  std::vector<std::vector<Stmt>> stmt_blocks_;
-  std::vector<std::vector<Expr>> expr_blocks_;
-  std::vector<std::vector<TokenStrId>> str_blocks_;
-  std::vector<std::vector<TokenType>> token_type_blocks_;
+  std::vector<Stmt> stmts_;
+  std::vector<Expr> exprs_;
+  std::vector<std::string> strs_;
+  std::vector<StmtBlock> stmt_blocks_;
+  std::vector<ExprBlock> expr_blocks_;
+  std::vector<StrBlock> str_blocks_;
+  std::vector<TokenTypeBlock> token_type_blocks_;
 };
 
 }  // namespace ilang

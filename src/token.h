@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "expr_stmt_pool.h"
 #include "token_type.h"
 #include "types.h"
 
@@ -17,7 +18,7 @@ struct TokenMeta {
 union TokenData {
   double fp_;
   int64_t int_;
-  TokenStrId str_idx_;
+  StrId str_idx_;
 };
 
 struct Token {
@@ -30,7 +31,7 @@ struct Token {
 
 class TokenSpawner {
  public:
-  TokenSpawner();
+  TokenSpawner(ExprStmtPool* pool);
 
   Token Spawn(TokenType type, std::string&& str);
   Token Spawn(TokenType type, int64_t num);
@@ -38,14 +39,14 @@ class TokenSpawner {
   Token Spawn(TokenType type);
 
   std::string ToString(Token token) const;
-  const std::string& GetString(TokenStrId id) const;
+  const std::string& GetString(StrId id) const;
 
   TokenMeta MakeTokenMeta(TokenType type);
-  TokenStrId StoreString(std::string&& str);
+  StrId StoreString(std::string&& str);
 
  private:
+  ExprStmtPool* pool_;
   TokenId cur_token_id_;
-  std::vector<std::string> str_buffer_;
 };
 
 }  // namespace ilang

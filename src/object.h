@@ -20,7 +20,7 @@ struct Object {
   union {
     int64_t int_;
     double fp_;
-    TokenStrId str_id_;
+    StrId str_id_;
   };
 
   static const char* GetTypeName(Type type);
@@ -34,7 +34,7 @@ struct Object {
 
 Object MakeInt(int64_t val);
 Object MakeFloat(double val);
-Object MakeString(TokenStrId val);
+Object MakeString(StrId val);
 Object MakeBool(bool val);
 Object MakeNone();
 

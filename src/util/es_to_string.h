@@ -9,20 +9,14 @@
 namespace ilang {
 
 struct ExprStmtPool;
-class TokenSpawner;
 
-struct Pools {
-  const ExprStmtPool& es;
-  const TokenSpawner& ts;
-};
-
-std::string StrBlockToString(StrBlockId str_block, Pools pools);
-std::string ExprBlockToString(ExprBlockId id, Pools pools);
-std::string ExprToString(Expr expr, Pools pools);
-std::string ExprToString(ExprId id, Pools pools);
-std::string TokenStrToString(TokenStrId id, Pools pools);
-std::string StmtBlockToString(StmtBlockId id, Pools pools);
-std::string StmtToString(Stmt stmt, Pools pools);
-std::string StmtToString(StmtId id, Pools pools);
+std::string StrBlockToString(StrBlockId str_block, const ExprStmtPool& pool);
+std::string ExprBlockToString(ExprBlockId id, const ExprStmtPool& pool);
+std::string ExprToString(Expr expr, const ExprStmtPool& pool);
+std::string ExprToString(ExprId id, const ExprStmtPool& pool);
+std::string TokenStrToString(StrId id, const ExprStmtPool& pool);
+std::string StmtBlockToString(StmtBlockId id, const ExprStmtPool& pool);
+std::string StmtToString(Stmt stmt, const ExprStmtPool& pool);
+std::string StmtToString(StmtId id, const ExprStmtPool& pool);
 
 }  // namespace ilang

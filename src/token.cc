@@ -6,7 +6,8 @@ const char* Token::GetTypeName() const { return GetTokenTypeName(meta_.type_); }
 
 TokenType Token::GetType() const { return meta_.type_; }
 
-TokenSpawner::TokenSpawner() : cur_token_id_(0), str_buffer_() {}
+TokenSpawner::TokenSpawner(ExprStmtPool* pool)
+    : pool_(pool), cur_token_id_(0) {}
 
 Token TokenSpawner::Spawn(TokenType type, std::string&& str) {
   Token t = {.meta_ = MakeTokenMeta(type)};
@@ -48,7 +49,7 @@ std::string TokenSpawner::ToString(Token token) const {
     case TokenType::COMMENT:
     case TokenType::STRING:
     case TokenType::IDENTIFIER:
-      ss << "\"" << str_buffer_[token.data_.str_idx_] << "\"";
+      ss << "\"" << pool_->strs_[token.data_.str_idx_] << "\"";
       break;
     default:
       break;
@@ -58,17 +59,17 @@ std::string TokenSpawner::ToString(Token token) const {
   return ss.str();
 }
 
-const std::string& TokenSpawner::GetString(TokenStrId id) const {
-  return str_buffer_[id];
+const std::string& TokenSpawner::GetString(StrId id) const {
+  return pool_->strs_[id];
 }
 
 TokenMeta TokenSpawner::MakeTokenMeta(TokenType type) {
   return {type, cur_token_id_++};
 }
 
-TokenStrId TokenSpawner::StoreString(std::string&& str) {
-  str_buffer_.emplace_back(std::move(str));
-  return str_buffer_.size() - 1;
+StrId TokenSpawner::StoreString(std::string&& str) {
+  pool_->strs_.emplace_back(std::move(str));
+  return pool_->strs_.size() - 1;
 }
 
 }  // namespace ilang

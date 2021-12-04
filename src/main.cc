@@ -5,11 +5,11 @@
 
 #include "expr.h"
 #include "parser.h"
+#include "resolver.h"
 #include "scanner.h"
 #include "stmt.h"
 #include "util/es_to_string.h"
 #include "util/version.h"
-// #include "resolver/resolver.h"
 // #include "interpreter/interpreter.h"
 
 namespace ilang {
@@ -28,8 +28,9 @@ std::string ReadFile(const char* path) {
 int ExecuteFile(const char* path) {
   std::string source = ReadFile(path);
 
+  ExprStmtPool es_pool;
   Scanner scanner;
-  TokenSpawner token_spawner;
+  TokenSpawner token_spawner(&es_pool);
   std::vector<Token> tokens = scanner.GetTokens(source, &token_spawner);
 
   if (scanner.HasError()) {
@@ -42,7 +43,6 @@ int ExecuteFile(const char* path) {
   //   std::cout << token_spawner.ToString(t) << '\n';
   // }
 
-  ExprStmtPool es_pool;
   Parser parser(source, tokens, &es_pool);
   std::vector<StmtId> statements = parser.Parse();
 
@@ -50,15 +50,13 @@ int ExecuteFile(const char* path) {
     return 1;
   }
 
-  Pools pools{es_pool, token_spawner};
-  for (StmtId stmt : statements) {
-    std::cout << StmtToString(stmt, pools);
-  }
+  // for (StmtId stmt : statements) {
+  //   std::cout << StmtToString(stmt, es_pool);
+  // }
 
   // interpreter::Interpreter interpreter;
-  // resolver::Resolver resolver(interpreter);
-
-  // resolver.Resolve(statements);
+  Resolver resolver(es_pool);
+  resolver.ResolveStmts(statements);
 
   // interpreter.Interpret(statements);
 

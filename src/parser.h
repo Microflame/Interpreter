@@ -60,7 +60,7 @@ class Parser {
     return AddStmt({stmt_data.TYPE, stmt_data});
   }
 
-  StmtId AddDefStmt(TokenStrId name, StrBlockId params, StmtBlockId body) {
+  StmtId AddDefStmt(StrId name, StrBlockId params, StmtBlockId body) {
     Stmt stmt = {Stmt::DEF};
     stmt.def_ = {.name_ = name, .params_ = params, .body_ = body};
     return AddStmt(stmt);
@@ -103,13 +103,13 @@ class Parser {
     return expr_stmt_pool_.PushExpr(expr);
   }
 
-  ExprId AddAssignExpr(ExprId value, TokenStrId name) {
+  ExprId AddAssignExpr(ExprId value, StrId name) {
     Expr expr = {Expr::ASSIGN};
     expr.assign_ = {.value_ = value, .name_ = name};
     return AddExpr(expr);
   }
 
-  ExprId AddSetExpr(ExprId object, ExprId value, TokenStrId name) {
+  ExprId AddSetExpr(ExprId object, ExprId value, StrId name) {
     Expr expr = {Expr::SET};
     expr.set_ = {.object_ = object, .value_ = value, .name_ = name};
     return AddExpr(expr);
@@ -139,7 +139,7 @@ class Parser {
     return AddExpr(expr);
   }
 
-  ExprId AddGetExpr(ExprId object, TokenStrId name) {
+  ExprId AddGetExpr(ExprId object, StrId name) {
     Expr expr = {Expr::GET};
     expr.get_ = {.object_ = object, .name_ = name};
     return AddExpr(expr);
@@ -162,7 +162,7 @@ class Parser {
     return AddExpr(expr);
   }
 
-  ExprId AddVariableExpr(TokenStrId name) {
+  ExprId AddVariableExpr(StrId name) {
     Expr expr = {Expr::VARIABLE};
     expr.variable_ = {.name_ = name};
     return AddExpr(expr);
@@ -192,14 +192,14 @@ class Parser {
   }
 
   StmtId ParseFunction() {
-    TokenStrId name = ConsumeToken(TokenType::IDENTIFIER).data_.str_idx_;
+    StrId name = ConsumeToken(TokenType::IDENTIFIER).data_.str_idx_;
 
     StrBlockId params_block = -1;
     ConsumeToken(TokenType::LEFT_PAREN);
 
     if (GetCurrentTokenType() != TokenType::RIGHT_PAREN) {
       params_block = expr_stmt_pool_.MakeNewStrBlock();
-      TokenStrId param_id = ConsumeToken(TokenType::IDENTIFIER).data_.str_idx_;
+      StrId param_id = ConsumeToken(TokenType::IDENTIFIER).data_.str_idx_;
       expr_stmt_pool_.str_blocks_[params_block].push_back(param_id);
       while (GetCurrentTokenType() == TokenType::COMMA) {
         Advance();
@@ -314,7 +314,7 @@ class Parser {
 
     while (GetCurrentTokenType() != TokenType::UNINDENT && Remaining()) {
       StmtId stmt_id = ParseDeclarationOrStatement();
-      Stmt stmt = expr_stmt_pool_.statements_[stmt_id];
+      Stmt stmt = expr_stmt_pool_.stmts_[stmt_id];
       expr_stmt_pool_.stmt_blocks_[block_id].push_back(stmt);
     }
 
@@ -348,7 +348,7 @@ class Parser {
     if (GetCurrentTokenType() == TokenType::EQUAL) {
       Advance();
       ExprId value = ParseAssign();
-      Expr lvalue = expr_stmt_pool_.expressions_[lvalue_id];
+      Expr lvalue = expr_stmt_pool_.exprs_[lvalue_id];
       Expr::Type lvalue_type = lvalue.type_;
 
       if (lvalue_type == Expr::VARIABLE) {
@@ -395,13 +395,13 @@ class Parser {
     if (IsAtComparison() || IsAtEqualityCheck()) {
       ExprBlockId comparables = expr_stmt_pool_.MakeNewExprBlock();
       TokenTypeBlockId ops = expr_stmt_pool_.MakeNewTokenTypeBlock();
-      Expr cmp = expr_stmt_pool_.expressions_[expr];
+      Expr cmp = expr_stmt_pool_.exprs_[expr];
       expr_stmt_pool_.expr_blocks_[comparables].push_back(cmp);
       while (IsAtComparison() || IsAtEqualityCheck()) {
         Token op = Pop();
         expr_stmt_pool_.token_type_blocks_[ops].push_back(op.meta_.type_);
         ExprId right = ParseAddition();
-        cmp = expr_stmt_pool_.expressions_[right];
+        cmp = expr_stmt_pool_.exprs_[right];
         expr_stmt_pool_.expr_blocks_[comparables].push_back(cmp);
       }
       return AddComparisonExpr(comparables, ops);
@@ -467,12 +467,12 @@ class Parser {
 
     if (GetCurrentTokenType() != TokenType::RIGHT_PAREN) {
       ExprId expr_id = ParseExpr();
-      Expr expr = expr_stmt_pool_.expressions_[expr_id];
+      Expr expr = expr_stmt_pool_.exprs_[expr_id];
       expr_stmt_pool_.expr_blocks_[args].push_back(expr);
       while (GetCurrentTokenType() == TokenType::COMMA) {
         Advance();
         ExprId expr_id = ParseExpr();
-        Expr expr = expr_stmt_pool_.expressions_[expr_id];
+        Expr expr = expr_stmt_pool_.exprs_[expr_id];
         expr_stmt_pool_.expr_blocks_[args].push_back(expr);
       }
     }

@@ -10,7 +10,7 @@ struct ReturnStmt {
 };
 
 struct DefStmt {
-  TokenStrId name_;
+  StrId name_;
   StrBlockId params_;
   StmtBlockId body_;
 };
