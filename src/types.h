@@ -1,7 +1,7 @@
 #pragma once
 
-#include "strong_typedef.h"
 #include "token_type.h"
+#include "util/strong_typedef.h"
 
 namespace ilang {
 
