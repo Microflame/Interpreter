@@ -2,29 +2,17 @@
 
 #include <iostream>
 
-namespace ilang
-{
+namespace ilang {
 
-class Logger
-{
-public:
-  enum LogLevel
-  {
-    kDebug,
-    kInfo,
-    kWarning,
-    kError,
-    kFatal
-  };
+class Logger {
+ public:
+  enum LogLevel { kDebug, kInfo, kWarning, kError, kFatal };
 
-  Logger(LogLevel log_level)
-    : log_level_(log_level) {}
+  Logger(LogLevel log_level) : log_level_(log_level) {}
 
-  template <size_t N, typename ... Args>
-  void operator()(LogLevel log_level, const char (&message)[N], Args ... args)
-  {
-    if (log_level < log_level_)
-    {
+  template <size_t N, typename... Args>
+  void operator()(LogLevel log_level, const char (&message)[N], Args... args) {
+    if (log_level < log_level_) {
       return;
     }
 
@@ -34,18 +22,16 @@ public:
     std::cerr << buffer << "\n";
   }
 
-  void operator()(LogLevel log_level, const char* message)
-  {
-    if (log_level < log_level_)
-    {
+  void operator()(LogLevel log_level, const char* message) {
+    if (log_level < log_level_) {
       return;
     }
 
     std::cerr << message << "\n";
   }
 
-private:
+ private:
   LogLevel log_level_;
 };
 
-} // namespace ilang
+}  // namespace ilang

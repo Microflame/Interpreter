@@ -1,30 +1,26 @@
 #pragma once
 
-#include <string>
 #include <sstream>
+#include <string>
 #include <vector>
 
 #include "token_type.h"
 #include "types.h"
 
-namespace ilang
-{
+namespace ilang {
 
-struct TokenMeta
-{
+struct TokenMeta {
   TokenType type_;
   TokenId id_;
 };
 
-union TokenData
-{
+union TokenData {
   double fp_;
   int64_t int_;
   TokenStrId str_idx_;
 };
 
-struct Token
-{
+struct Token {
   TokenMeta meta_;
   TokenData data_;
 
@@ -32,9 +28,8 @@ struct Token
   TokenType GetType() const;
 };
 
-class TokenSpawner
-{
-public:
+class TokenSpawner {
+ public:
   TokenSpawner();
 
   Token Spawn(TokenType type, std::string&& str);
@@ -48,10 +43,9 @@ public:
   TokenMeta MakeTokenMeta(TokenType type);
   TokenStrId StoreString(std::string&& str);
 
-private:
+ private:
   TokenId cur_token_id_;
   std::vector<std::string> str_buffer_;
 };
 
-
-} // ilang
+}  // namespace ilang

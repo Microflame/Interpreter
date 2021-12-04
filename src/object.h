@@ -2,13 +2,10 @@
 
 #include "types.h"
 
-namespace ilang
-{
+namespace ilang {
 
-struct Object
-{
-  enum Type : int8_t
-  {
+struct Object {
+  enum Type : int8_t {
     INT,
     FLOAT,
     STRING,
@@ -20,8 +17,7 @@ struct Object
     NONE
   } type_;
 
-  union
-  {
+  union {
     int64_t int_;
     double fp_;
     TokenStrId str_id_;
@@ -42,4 +38,4 @@ Object MakeString(TokenStrId val);
 Object MakeBool(bool val);
 Object MakeNone();
 
-} // namespace ilang
+}  // namespace ilang

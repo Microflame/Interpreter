@@ -1,43 +1,39 @@
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <span>
 #include <streambuf>
 
-
-#include "scanner.h"
 #include "expr.h"
-#include "stmt.h"
 #include "parser.h"
+#include "scanner.h"
+#include "stmt.h"
 #include "util/es_to_string.h"
 #include "util/version.h"
 // #include "resolver/resolver.h"
 // #include "interpreter/interpreter.h"
 
-namespace ilang
-{
+namespace ilang {
 
-std::string ReadFile(const char* path)
-{
+std::string ReadFile(const char* path) {
   std::ifstream fin(path);
-  if (!fin.is_open())
-  {
+  if (!fin.is_open()) {
     std::cerr << "Can not open " << path << "\n";
   }
 
-  std::string source((std::istreambuf_iterator<char>(fin)), std::istreambuf_iterator<char>());
+  std::string source((std::istreambuf_iterator<char>(fin)),
+                     std::istreambuf_iterator<char>());
   return source;
 }
 
-int ExecuteFile(const char* path)
-{
+int ExecuteFile(const char* path) {
   std::string source = ReadFile(path);
 
   Scanner scanner;
   TokenSpawner token_spawner;
   std::vector<Token> tokens = scanner.GetTokens(source, &token_spawner);
 
-  if (scanner.HasError())
-  {
-    std::cerr << "Scanner error" << "\n";
+  if (scanner.HasError()) {
+    std::cerr << "Scanner error\n";
     return 1;
   }
 
@@ -50,14 +46,12 @@ int ExecuteFile(const char* path)
   Parser parser(source, tokens, &es_pool);
   std::vector<StmtId> statements = parser.Parse();
 
-  if (parser.HasError())
-  {
+  if (parser.HasError()) {
     return 1;
   }
 
   Pools pools{es_pool, token_spawner};
-  for (StmtId stmt: statements)
-  {
+  for (StmtId stmt : statements) {
     std::cout << StmtToString(stmt, pools);
   }
 
@@ -71,25 +65,16 @@ int ExecuteFile(const char* path)
   return 0;
 }
 
-} // namespace ilang
+}  // namespace ilang
 
+int RunPrompt() { return 1; }
 
-
-int RunPrompt()
-{
-  return 1;
-}
-
-int main(int argc, const char* argv[])
-{
+int main(int argc, const char* argv[]) {
+  auto args = std::span(argv, size_t(argc));
   int retval = 0;
-  if (argc > 1)
-  {
-    retval = ilang::ExecuteFile(argv[1]);
-  }
-  else
-  {
-    retval = ilang::ExecuteFile("./example.inp");
+  if (args.size() > 1) {
+    retval = ilang::ExecuteFile(args[1]);
+  } else {
     retval = RunPrompt();
   }
   return retval;

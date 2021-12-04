@@ -1,18 +1,14 @@
 #pragma once
 
-#include <string>
+#include <string_view>
 
-namespace util {
+namespace ilang {
 
-struct Position
-{
+struct Position {
   size_t line;
   size_t column;
 };
 
-namespace string_tools {
+Position GetPosition(std::string_view view);
 
-Position GetPosition(const char* s, size_t idx);
-
-} // string_tools
-} // util
+}  // namespace ilang

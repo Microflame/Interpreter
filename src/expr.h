@@ -1,93 +1,78 @@
 #pragma once
 
+#include <variant>
+
 #include "object.h"
 #include "types.h"
 
-namespace ilang
-{
+namespace ilang {
 
-
-struct ThisExpr
-{
+struct ThisExpr {
   // scanner::Token name_;
 };
 
-struct SuperExpr
-{
+struct SuperExpr {
   // scanner::Token name_;
   // scanner::Token method_;
 };
 
-struct GetExpr
-{
+struct GetExpr {
   ExprId object_;
   TokenStrId name_;
 };
 
-struct SetExpr
-{
+struct SetExpr {
   ExprId object_;
   ExprId value_;
   TokenStrId name_;
 };
 
-struct AssignExpr
-{
+struct AssignExpr {
   ExprId value_;
   TokenStrId name_;
 };
 
-struct BinaryExpr
-{
+struct BinaryExpr {
   ExprId left_;
   ExprId right_;
   TokenType op_;
 };
 
-struct ComparisonExpr
-{
+struct ComparisonExpr {
   ExprBlockId comparables_;
   TokenTypeBlockId ops_;
 };
 
-struct LogicalExpr
-{
+struct LogicalExpr {
   ExprId left_;
   ExprId right_;
   TokenType op_;
 };
 
-struct GroupingExpr
-{
+struct GroupingExpr {
   ExprId expr_;
 };
 
-struct LiteralExpr
-{
+struct LiteralExpr {
   Object val_;
 };
 
-struct UnaryExpr
-{
+struct UnaryExpr {
   ExprId right_;
   TokenType op_;
 };
 
-struct VariableExpr
-{
+struct VariableExpr {
   TokenStrId name_;
 };
 
-struct CallExpr
-{
+struct CallExpr {
   ExprId callee_;
   ExprBlockId args_;
 };
 
-struct Expr
-{
-  enum Type : uint8_t
-  {
+struct Expr {
+  enum Type : uint8_t {
     THIS,
     SUPER,
     GET,
@@ -103,10 +88,9 @@ struct Expr
     CALL
   } type_;
 
-  ExprId id_; //TODO: Do we need this field in every Expr?
+  ExprId id_;  // TODO: Do we need this field in every Expr?
 
-  union
-  {
+  union {
     ThisExpr this_;
     SuperExpr super_;
     GetExpr get_;
@@ -125,4 +109,4 @@ struct Expr
 
 const char* ExprTypeToString(Expr::Type type);
 
-} // ilang
+}  // namespace ilang

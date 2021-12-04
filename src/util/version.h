@@ -1,10 +1,8 @@
 #pragma once
 
-namespace ilang
-{
+namespace ilang {
 
-const char* GetBuildType()
-{
+const char* GetBuildType() {
 #ifdef NDEBUG
   return "Release";
 #else
@@ -12,4 +10,4 @@ const char* GetBuildType()
 #endif
 }
 
-} // namespace ilang
+}  // namespace ilang

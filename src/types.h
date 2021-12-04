@@ -3,8 +3,7 @@
 #include "strong_typedef.h"
 #include "token_type.h"
 
-namespace ilang
-{
+namespace ilang {
 
 DEFINE_INDEX(TokenId, int32_t);
 DEFINE_INDEX(TokenStrId, int32_t);
@@ -15,4 +14,4 @@ DEFINE_INDEX(TokenTypeBlockId, int32_t);
 DEFINE_INDEX(StmtId, int32_t);
 DEFINE_INDEX(StmtBlockId, int32_t);
 
-} // namespace ilang
+}  // namespace ilang
