@@ -8,6 +8,7 @@
 #include "stmt.h"
 #include "parser.h"
 #include "util/es_to_string.h"
+#include "util/version.h"
 // #include "resolver/resolver.h"
 // #include "interpreter/interpreter.h"
 
