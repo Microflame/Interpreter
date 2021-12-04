@@ -33,6 +33,7 @@ struct IfStmt
   StmtId false_branch_;
 };
 
+// TODO: Do we really need this block?
 struct BlockStmt
 {
   StmtBlockId statements_;

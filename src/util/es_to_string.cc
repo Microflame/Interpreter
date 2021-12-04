@@ -231,9 +231,9 @@ std::string StmtToString(Stmt stmt, Pools pools)
       ss << "if (";
       ss << ExprToString(s.condition_, pools);
       ss << ") {\n";
-      ss << StmtBlockToString(s.true_branch_, pools);
+      ss << StmtToString(s.true_branch_, pools);
       ss << "} else {\n";
-      ss << StmtBlockToString(s.false_branch_, pools);
+      ss << StmtToString(s.false_branch_, pools);
       ss << "}\n";
       break;
     }
@@ -257,7 +257,7 @@ std::string StmtToString(Stmt stmt, Pools pools)
       ss << "while (";
       ss << ExprToString(s.condition_, pools);
       ss << ") {\n";
-      ss << StmtBlockToString(s.body_, pools);
+      ss << StmtToString(s.body_, pools);
       ss << "}\n";
       break;
     }
