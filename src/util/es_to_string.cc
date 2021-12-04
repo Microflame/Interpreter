@@ -48,9 +48,11 @@ std::string ExprToString(Expr expr, Pools pools) {
     }
     case (Expr::BINARY): {
       BinaryExpr e = expr.binary_;
+      ss << "(";
       ss << ExprToString(e.left_, pools);
       ss << " " << GetTokenTypeName(e.op_) << " ";
       ss << ExprToString(e.right_, pools);
+      ss << ")";
       break;
     }
     case (Expr::COMPARISON): {

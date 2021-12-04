@@ -170,17 +170,14 @@ class Parser {
 
   StmtId ParseDeclarationOrStatement() {
     while (IsAtEndStatement()) Advance();
-    ;
 
     try {
       if (GetCurrentTokenType() == TokenType::DEF) {
         Advance();
-        ;
         return ParseFunction();
       }
       if (GetCurrentTokenType() == TokenType::CLASS) {
         Advance();
-        ;
         return -1;
         // return ParseClassDeclaration();
       }
@@ -206,7 +203,6 @@ class Parser {
       expr_stmt_pool_.str_blocks_[params_block].push_back(param_id);
       while (GetCurrentTokenType() == TokenType::COMMA) {
         Advance();
-        ;
         param_id = ConsumeToken(TokenType::IDENTIFIER).data_.str_idx_;
         expr_stmt_pool_.str_blocks_[params_block].push_back(param_id);
       }
@@ -255,19 +251,15 @@ class Parser {
     switch (GetCurrentTokenType()) {
       case TokenType::IF:
         Advance();
-        ;
         return ParseIfStmt();
       case TokenType::WHILE:
         Advance();
-        ;
         return ParseWhileStmt();
       case TokenType::INDENT:
         Advance();
-        ;
         return ParseBlockStmt();
       case TokenType::RETURN:
         Advance();
-        ;
         return ParseReturnStmt();
       default:
         break;
@@ -308,7 +300,6 @@ class Parser {
     StmtId false_branch = -1;
     if (GetCurrentTokenType() == TokenType::ELSE) {
       Advance();
-      ;
       ConsumeToken(TokenType::COLON);
       ConsumeToken(TokenType::NEWLINE);
       ConsumeToken(TokenType::INDENT);
@@ -356,7 +347,6 @@ class Parser {
 
     if (GetCurrentTokenType() == TokenType::EQUAL) {
       Advance();
-      ;
       ExprId value = ParseAssign();
       Expr lvalue = expr_stmt_pool_.expressions_[lvalue_id];
       Expr::Type lvalue_type = lvalue.type_;
@@ -459,11 +449,9 @@ class Parser {
     while (1) {
       if (GetCurrentTokenType() == TokenType::LEFT_PAREN) {
         Advance();
-        ;
         expr = ParseCall(expr);
       } else if (GetCurrentTokenType() == TokenType::DOT) {
         Advance();
-        ;
         Token name = ConsumeToken(TokenType::IDENTIFIER);
         expr = AddGetExpr(expr, name.data_.str_idx_);
       } else {
@@ -483,7 +471,6 @@ class Parser {
       expr_stmt_pool_.expr_blocks_[args].push_back(expr);
       while (GetCurrentTokenType() == TokenType::COMMA) {
         Advance();
-        ;
         ExprId expr_id = ParseExpr();
         Expr expr = expr_stmt_pool_.expressions_[expr_id];
         expr_stmt_pool_.expr_blocks_[args].push_back(expr);
@@ -499,18 +486,23 @@ class Parser {
     Object object;
     if (TryGetLiteral(&object)) {
       Advance();
-      ;
       return AddLiteralExpr(object);
     }
 
     if (GetCurrentTokenType() == TokenType::THIS) {
       Advance();
-      ;
       return AddThisExpr();
     }
 
-    Token op = ConsumeToken(TokenType::IDENTIFIER);
-    return AddVariableExpr(op.data_.str_idx_);
+    if (GetCurrentTokenType() == TokenType::IDENTIFIER) {
+      Token op = ConsumeToken(TokenType::IDENTIFIER);
+      return AddVariableExpr(op.data_.str_idx_);
+    }
+
+    ConsumeToken(TokenType::LEFT_PAREN);
+    ExprId group_expr = ParseExpr();
+    ConsumeToken(TokenType::RIGHT_PAREN);
+    return group_expr;
   }
 
   Token GetCurrentToken() const { return kTokens[cur_]; }
