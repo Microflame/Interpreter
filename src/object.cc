@@ -42,6 +42,13 @@ Object::Type Object::GetType() const { return type_; }
 
 bool Object::IsNumber() const { return (type_ == INT) || (type_ == FLOAT); }
 
+bool Object::AsBool() const {
+  if (type_ == NONE) return false;
+  if (type_ == INT) return int_;
+  if (type_ == BOOLEAN) return int_;
+  throw std::runtime_error("[Object::AsBool] Bad type");
+}
+
 Object MakeInt(int64_t val) { return {.type_ = Object::INT, .int_ = val}; }
 
 Object MakeFloat(double val) { return {.type_ = Object::FLOAT, .fp_ = val}; }

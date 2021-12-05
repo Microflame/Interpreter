@@ -30,6 +30,7 @@ struct Object {
 
   void AsssertType(Type type) const;
   bool IsNumber() const;
+  bool AsBool() const;
 };
 
 Object MakeInt(int64_t val);

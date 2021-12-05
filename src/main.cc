@@ -38,8 +38,7 @@ int ExecuteFile(const char* path) {
     return 1;
   }
 
-  // for (auto t: tokens)
-  // {
+  // for (auto t: tokens) {
   //   std::cout << token_spawner.ToString(t) << '\n';
   // }
 
@@ -54,10 +53,10 @@ int ExecuteFile(const char* path) {
   //   std::cout << StmtToString(stmt, es_pool);
   // }
 
-  // interpreter::Interpreter interpreter;
   Resolver resolver(es_pool);
   resolver.ResolveStmts(statements);
 
+  // interpreter::Interpreter interpreter;
   // interpreter.Interpret(statements);
 
   return 0;
