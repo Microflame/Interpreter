@@ -1,5 +1,6 @@
 build/
 bin/
+isrc/test.py
 .vscode/
 .clang-tidy
 .clang-format

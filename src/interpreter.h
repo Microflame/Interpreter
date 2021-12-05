@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+
 #include "expr.h"
 #include "expr_stmt_pool.h"
 #include "resolver.h"
@@ -7,15 +9,38 @@
 
 namespace ilang {
 
+class StackFrame {
+ public:
+  StackFrame(StackFrameId prev) : kPrevious(prev) {}
+
+  void Set(const std::string& name, Object obj) { variables_[name] = obj; }
+
+  Object Get(const std::string& name) {
+    auto it = variables_.find(name);
+    if (it == variables_.end()) {
+      throw std::runtime_error("[StackFrame::Get] Undefined variable " + name);
+    }
+    return it->second;
+  }
+
+ public:
+  const StackFrameId kPrevious;
+
+ private:
+  std::unordered_map<std::string, Object> variables_;
+};
+
 class Interpreter {
  public:
   Interpreter(const ExprStmtPool& pool, const Resolver& resolver)
       : pool_(pool), resolver_(resolver) {}
 
   void Interpret(const std::vector<StmtId>& stmts) {
+    PushStackFrame();
     for (StmtId id : stmts) {
       InterpretStmt(id);
     }
+    PopStackFrame();
   }
 
   void InterpretStmt(StmtId id) {
@@ -46,14 +71,17 @@ class Interpreter {
       }
       case Stmt::BLOCK: {
         BlockStmt s = stmt.block_;
+        InterpretBlock(s);
         break;
       }
       case Stmt::EXPRESSION: {
         ExpressionStmt s = stmt.expression_;
+        InterpretExpr(s.expr_);
         break;
       }
       case Stmt::WHILE: {
         WhileStmt s = stmt.while_;
+        InterpretWhile(s);
         break;
       }
     }
@@ -65,6 +93,36 @@ class Interpreter {
       InterpretStmt(stmt.true_branch_);
     } else {
       InterpretStmt(stmt.false_branch_);
+    }
+  }
+
+  void InterpretBlock(BlockStmt stmt) {
+    const StmtBlock& stmts = pool_.stmt_blocks_[stmt.statements_];
+    // TODO: push frame
+    ExecuteStmts(stmts);
+    // TODO: pop frame
+  }
+
+  void ExecuteStmts(const StmtBlock& stmts) {
+    for (Stmt stmt : stmts) {
+      InterpretStmt(stmt);
+      if (has_return_) {
+        return;
+      }
+    }
+  }
+
+  void InterpretWhile(WhileStmt stmt) {
+    while (true) {
+      Object cond = InterpretExpr(stmt.condition_);
+      bool pred = cond.AsBool();
+      if (!pred) {
+        break;
+      }
+      InterpretStmt(stmt.body_);
+      if (has_return_) {
+        break;
+      }
     }
   }
 
@@ -99,30 +157,51 @@ class Interpreter {
       case Expr::LOGICAL:
         return EvalLogical(expr.logical_);
       case Expr::GROUPING: {
-        GroupingExpr e = expr.grouping_;
+        // GroupingExpr e = expr.grouping_;
         break;
       }
-      case Expr::LITERAL: {
-        LiteralExpr e = expr.literal_;
-        break;
-      }
-      case Expr::UNARY: {
-        UnaryExpr e = expr.unary_;
-        break;
-      }
-      case Expr::ASSIGN: {
-        AssignExpr e = expr.assign_;
-        break;
-      }
-      case Expr::VARIABLE: {
-        VariableExpr e = expr.variable_;
-        break;
-      }
+      case Expr::LITERAL:
+        return expr.literal_.val_;
+      case Expr::UNARY:
+        return EvalUnary(expr.unary_);
+      case Expr::ASSIGN:
+        return EvalAssign(expr.assign_);
+      case Expr::VARIABLE:
+        return EvalVariable(expr.variable_);
       case Expr::CALL: {
         CallExpr e = expr.call_;
         break;
       }
     }
+    throw std::runtime_error("[InterpretExpr] Bad expr opcode!");
+  }
+
+  Object EvalVariable(VariableExpr expr) {
+    const std::string& name = pool_.strs_[expr.name_];
+    return GetCurrentStackFrame().Get(name);
+  }
+
+  Object EvalAssign(AssignExpr expr) {
+    const std::string& name = pool_.strs_[expr.name_];
+    Object val = InterpretExpr(expr.value_);
+    GetCurrentStackFrame().Set(name, val);
+    return val;
+  }
+
+  Object EvalUnary(UnaryExpr expr) {
+    Object obj = InterpretExpr(expr.right_);
+    if (expr.op_ == TokenType::NOT) {
+      return MakeBool(!obj.AsBool());
+    }
+    int64_t sign = 0;
+    if (expr.op_ == TokenType::PLUS) {
+      sign = 1;
+    } else if (expr.op_ == TokenType::MINUS) {
+      sign = -1;
+    } else {
+      throw std::runtime_error("[EvalUnary] Bad op");
+    }
+    return obj.MultInt(sign);
   }
 
   Object EvalLogical(LogicalExpr expr) {
@@ -152,14 +231,34 @@ class Interpreter {
   Object EvalBinary(BinaryExpr expr) {
     Object left = InterpretExpr(expr.left_);
     Object right = InterpretExpr(expr.right_);
-    return {};
+    switch (expr.op_) {
+      case TokenType::STAR:
+        return left.Mult(right);
+      case TokenType::SLASH:
+        return left.Div(right);
+      case TokenType::PLUS:
+        return left.Add(right);
+      case TokenType::MINUS:
+        return left.Sub(right);
+      default:
+        throw std::runtime_error("[EvalBinary] Bad op!");
+    }
   }
 
-  Object EvalComparison(ComparisonExpr expr) {}
+  Object EvalComparison(ComparisonExpr expr) { return MakeNone(); }
+
+  StackFrameId GetCurrentStackFrameId() {
+    return (StackFrameId)stack_.size() - 1;
+  }
+  void PushStackFrame() { PushStackFrame(GetCurrentStackFrameId()); }
+  void PushStackFrame(StackFrameId prev) { stack_.emplace_back(prev); }
+  void PopStackFrame() { stack_.pop_back(); }
+  StackFrame& GetCurrentStackFrame() { return stack_.back(); }
 
  private:
   const ExprStmtPool& pool_;
   const Resolver& resolver_;
+  std::vector<StackFrame> stack_;
 
   bool has_return_ = false;
   Object retval_ = MakeNone();

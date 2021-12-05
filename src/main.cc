@@ -4,13 +4,13 @@
 #include <streambuf>
 
 #include "expr.h"
+#include "interpreter.h"
 #include "parser.h"
 #include "resolver.h"
 #include "scanner.h"
 #include "stmt.h"
 #include "util/es_to_string.h"
 #include "util/version.h"
-// #include "interpreter/interpreter.h"
 
 namespace ilang {
 
@@ -56,8 +56,8 @@ int ExecuteFile(const char* path) {
   Resolver resolver(es_pool);
   resolver.ResolveStmts(statements);
 
-  // interpreter::Interpreter interpreter;
-  // interpreter.Interpret(statements);
+  Interpreter interpreter(es_pool, resolver);
+  interpreter.Interpret(statements);
 
   return 0;
 }

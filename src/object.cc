@@ -1,5 +1,6 @@
 #include "object.h"
 
+#include <iostream>
 #include <stdexcept>
 
 namespace ilang {
@@ -49,16 +50,103 @@ bool Object::AsBool() const {
   throw std::runtime_error("[Object::AsBool] Bad type");
 }
 
-Object MakeInt(int64_t val) { return {.type_ = Object::INT, .int_ = val}; }
+Object Object::Mult(Object other) const {
+  if (other.type_ == Type::FLOAT) return MultFp(other.fp_);
+  if (other.type_ == Type::INT) return MultInt(other.int_);
+  throw std::runtime_error("[Mult] bad right value type.");
+}
 
-Object MakeFloat(double val) { return {.type_ = Object::FLOAT, .fp_ = val}; }
+Object Object::MultInt(int64_t other) const {
+  if (type_ == Type::INT) return MakeInt(int_ * other);
+  if (type_ == Type::FLOAT) return MakeFloat(fp_ * other);
+  throw std::runtime_error("[MultInt] bad left value type.");
+}
+
+Object Object::MultFp(double other) const {
+  if (type_ == Type::FLOAT) return MakeFloat(fp_ * other);
+  if (type_ == Type::INT) return MakeFloat(int_ * other);
+  throw std::runtime_error("[MultFp] bad left value type.");
+}
+
+Object Object::Div(Object other) const {
+  if (other.type_ == Type::FLOAT) return DivFp(other.fp_);
+  if (other.type_ == Type::INT) return DivInt(other.int_);
+  throw std::runtime_error("[Div] bad right value type.");
+}
+
+Object Object::DivInt(int64_t other) const {
+  if (type_ == Type::INT)
+    return int_ % other ? MakeFloat((double)int_ / other)
+                        : MakeInt(int_ / other);
+  if (type_ == Type::FLOAT) return MakeFloat(fp_ / other);
+  throw std::runtime_error("[DivInt] bad left value type.");
+}
+
+Object Object::DivFp(double other) const {
+  if (type_ == Type::FLOAT) return MakeFloat(fp_ / other);
+  if (type_ == Type::INT) return MakeFloat(int_ / other);
+  throw std::runtime_error("[DivFp] bad left value type.");
+}
+
+Object Object::Add(Object other) const {
+  if (other.type_ == Type::FLOAT) return AddFp(other.fp_);
+  if (other.type_ == Type::INT) return AddInt(other.int_);
+  throw std::runtime_error("[Add] bad right value type.");
+}
+
+Object Object::AddInt(int64_t other) const {
+  if (type_ == Type::INT) return MakeInt(int_ + other);
+  if (type_ == Type::FLOAT) return MakeFloat(fp_ + other);
+  throw std::runtime_error("[AddInt] bad left value type.");
+}
+
+Object Object::AddFp(double other) const {
+  if (type_ == Type::FLOAT) return MakeFloat(fp_ + other);
+  if (type_ == Type::INT) return MakeFloat(int_ + other);
+  throw std::runtime_error("[AddFp] bad left value type.");
+}
+
+Object Object::Sub(Object other) const {
+  if (other.type_ == Type::FLOAT) return SubFp(other.fp_);
+  if (other.type_ == Type::INT) return SubInt(other.int_);
+  throw std::runtime_error("[Sub] bad right value type.");
+}
+
+Object Object::SubInt(int64_t other) const {
+  if (type_ == Type::INT) return MakeInt(int_ - other);
+  if (type_ == Type::FLOAT) return MakeFloat(fp_ - other);
+  throw std::runtime_error("[SubInt] bad left value type.");
+}
+
+Object Object::SubFp(double other) const {
+  if (type_ == Type::FLOAT) return MakeFloat(fp_ - other);
+  if (type_ == Type::INT) return MakeFloat(int_ - other);
+  throw std::runtime_error("[SubFp] bad left value type.");
+}
+
+Object MakeInt(int64_t val) {
+  std::cerr << "MakeInt: " << val << '\n';
+  return {.type_ = Object::INT, .int_ = val};
+}
+
+Object MakeFloat(double val) {
+  std::cerr << "MakeFloat: " << val << '\n';
+  return {.type_ = Object::FLOAT, .fp_ = val};
+}
 
 Object MakeString(StrId val) {
+  std::cerr << "MakeString\n";
   return {.type_ = Object::STRING, .str_id_ = val};
 }
 
-Object MakeBool(bool val) { return {.type_ = Object::BOOLEAN, .int_ = val}; }
+Object MakeBool(bool val) {
+  std::cerr << "MakeBool: " << val << '\n';
+  return {.type_ = Object::BOOLEAN, .int_ = val};
+}
 
-Object MakeNone() { return {Object::NONE}; }
+Object MakeNone() {
+  std::cerr << "MakeNone\n";
+  return {Object::NONE};
+}
 
 }  // namespace ilang

@@ -604,7 +604,8 @@ class Parser {
 
   bool IsAtUnary() {
     TokenType type = GetCurrentTokenType();
-    return type == TokenType::MINUS || type == TokenType::NOT;
+    return type == TokenType::PLUS || type == TokenType::MINUS ||
+           type == TokenType::NOT;
   }
 
   bool IsAtLiteral() {

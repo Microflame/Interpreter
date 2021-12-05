@@ -13,5 +13,6 @@ DEFINE_INDEX(ExprBlockId, int32_t);
 DEFINE_INDEX(TokenTypeBlockId, int32_t);
 DEFINE_INDEX(StmtId, int32_t);
 DEFINE_INDEX(StmtBlockId, int32_t);
+DEFINE_INDEX(StackFrameId, int32_t);
 
 }  // namespace ilang
