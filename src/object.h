@@ -4,6 +4,11 @@
 
 namespace ilang {
 
+struct ExprStmtPool;
+
+struct Object;
+using BuiltinFn = Object (*)(const std::vector<Object>&, const ExprStmtPool&);
+
 struct Object {
   enum Type : int8_t {
     INT,
@@ -14,6 +19,7 @@ struct Object {
     CALLABLE,
     CLASS,
     INSTANCE,
+    BUILTIN_FUNCTION,
     NONE
   } type_;
 
@@ -21,6 +27,7 @@ struct Object {
     int64_t int_;
     double fp_;
     StrId str_id_;
+    BuiltinFn builtin_fn_;
   };
 
   static const char* GetTypeName(Type type);
@@ -31,6 +38,8 @@ struct Object {
   void AsssertType(Type type) const;
   bool IsNumber() const;
   bool AsBool() const;
+
+  std::string ToString(const ExprStmtPool& pool) const;
 
   Object Mult(Object other) const;
   Object MultInt(int64_t other) const;
@@ -51,5 +60,6 @@ Object MakeFloat(double val);
 Object MakeString(StrId val);
 Object MakeBool(bool val);
 Object MakeNone();
+Object MakeBuiltin(BuiltinFn fn);
 
 }  // namespace ilang

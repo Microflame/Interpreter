@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 
+#include "builtin/print.h"
 #include "expr.h"
 #include "expr_stmt_pool.h"
 #include "resolver.h"
@@ -37,10 +38,16 @@ class Interpreter {
 
   void Interpret(const std::vector<StmtId>& stmts) {
     PushStackFrame();
+    AddBuiltins();
     for (StmtId id : stmts) {
       InterpretStmt(id);
     }
     PopStackFrame();
+  }
+
+  void AddBuiltins() {
+    StackFrame& frame = GetCurrentStackFrame();
+    frame.Set("print", MakeBuiltin(PrintBuiltin));
   }
 
   void InterpretStmt(StmtId id) {
@@ -168,12 +175,39 @@ class Interpreter {
         return EvalAssign(expr.assign_);
       case Expr::VARIABLE:
         return EvalVariable(expr.variable_);
-      case Expr::CALL: {
-        CallExpr e = expr.call_;
-        break;
-      }
+      case Expr::CALL:
+        return EvalCall(expr.call_);
     }
     throw std::runtime_error("[InterpretExpr] Bad expr opcode!");
+  }
+
+  Object EvalCall(CallExpr expr) {
+    Object callee = InterpretExpr(expr.callee_);
+    if (callee.type_ != Object::BUILTIN_FUNCTION &&
+        callee.type_ != Object::CALLABLE) {
+      throw std::runtime_error("[EvalCall] Bad callee!");
+    }
+
+    std::vector<Object> args = EvalExprBlock(expr.args_);
+    if (callee.type_ == Object::BUILTIN_FUNCTION) {
+      return callee.builtin_fn_(args, pool_);
+    } else {
+      throw std::runtime_error("Not supported");
+    }
+  }
+
+  std::vector<Object> EvalExprBlock(ExprBlockId id) {
+    if (id == -1) return {};
+    const ExprBlock& block = pool_.expr_blocks_[id];
+    return EvalExprBlock(block);
+  }
+  std::vector<Object> EvalExprBlock(const ExprBlock& block) {
+    std::vector<Object> res;
+    res.reserve(block.size());
+    for (Expr e : block) {
+      res.push_back(InterpretExpr(e));
+    }
+    return res;
   }
 
   Object EvalVariable(VariableExpr expr) {

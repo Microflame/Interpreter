@@ -3,6 +3,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "expr_stmt_pool.h"
+
 namespace ilang {
 
 const char* Object::GetTypeName(Type type) {
@@ -23,6 +25,8 @@ const char* Object::GetTypeName(Type type) {
       return "CLASS";
     case INSTANCE:
       return "INSTANCE";
+    case BUILTIN_FUNCTION:
+      return "BUILTIN_FUNCTION";
     case NONE:
       return "NONE";
   }
@@ -48,6 +52,31 @@ bool Object::AsBool() const {
   if (type_ == INT) return int_;
   if (type_ == BOOLEAN) return int_;
   throw std::runtime_error("[Object::AsBool] Bad type");
+}
+
+std::string Object::ToString(const ExprStmtPool& pool) const {
+  switch (type_) {
+    case INT:
+      return std::to_string(int_);
+    case FLOAT:
+      return std::to_string(fp_);
+    case STRING:
+    case IDENTIFIER:
+      return pool.strs_[str_id_];
+    case BOOLEAN:
+      return int_ ? "True" : "False";
+    case CALLABLE:
+      return "CALLABLE";
+    case CLASS:
+      return "CLASS";
+    case INSTANCE:
+      return "INSTANCE";
+    case BUILTIN_FUNCTION:
+      return "BUILTIN_FUNCTION";
+    case NONE: {
+      return "None";
+    }
+  }
 }
 
 Object Object::Mult(Object other) const {
@@ -125,28 +154,33 @@ Object Object::SubFp(double other) const {
 }
 
 Object MakeInt(int64_t val) {
-  std::cerr << "MakeInt: " << val << '\n';
+  // std::cerr << "MakeInt: " << val << '\n';
   return {.type_ = Object::INT, .int_ = val};
 }
 
 Object MakeFloat(double val) {
-  std::cerr << "MakeFloat: " << val << '\n';
+  // std::cerr << "MakeFloat: " << val << '\n';
   return {.type_ = Object::FLOAT, .fp_ = val};
 }
 
 Object MakeString(StrId val) {
-  std::cerr << "MakeString\n";
+  // std::cerr << "MakeString\n";
   return {.type_ = Object::STRING, .str_id_ = val};
 }
 
 Object MakeBool(bool val) {
-  std::cerr << "MakeBool: " << val << '\n';
+  // std::cerr << "MakeBool: " << val << '\n';
   return {.type_ = Object::BOOLEAN, .int_ = val};
 }
 
 Object MakeNone() {
-  std::cerr << "MakeNone\n";
+  // std::cerr << "MakeNone\n";
   return {Object::NONE};
+}
+
+Object MakeBuiltin(BuiltinFn fn) {
+  // std::cerr << "MakeBuiltin\n";
+  return {.type_ = Object::BUILTIN_FUNCTION, .builtin_fn_ = fn};
 }
 
 }  // namespace ilang
