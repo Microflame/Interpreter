@@ -14,21 +14,39 @@ class StackFrame {
  public:
   StackFrame(StackFrameId prev) : kPrevious(prev) {}
 
-  void Set(const std::string& name, Object obj) { variables_[name] = obj; }
+  void Set(const std::string& name, Object obj) {
+    Object* found = Find(name);
+    if (found) {
+      *found = obj;
+    } else {
+      names_.push_back(name);
+      variables_.push_back(obj);
+    }
+  }
 
   Object Get(const std::string& name) {
-    auto it = variables_.find(name);
-    if (it == variables_.end()) {
+    Object* obj = Find(name);
+    if (!obj) {
       throw std::runtime_error("[StackFrame::Get] Undefined variable " + name);
     }
-    return it->second;
+    return *obj;
+  }
+
+  Object* Find(const std::string& name) {
+    for (size_t i = 0; i < names_.size(); i++) {
+      if (names_[i] == name) {
+        return &variables_[i];
+      }
+    }
+    return nullptr;
   }
 
  public:
   const StackFrameId kPrevious;
 
  private:
-  std::unordered_map<std::string, Object> variables_;
+  std::vector<std::string> names_;
+  std::vector<Object> variables_;
 };
 
 class Interpreter {

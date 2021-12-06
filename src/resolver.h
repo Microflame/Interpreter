@@ -19,13 +19,7 @@ class Resolver {
     Define("print");
   }
 
-  int32_t GetDepth(ResolveId id) const {
-    auto it = resolve_.find(id);
-    if (it == resolve_.end()) {
-      throw std::runtime_error("[GetDepth] unknown ResolveId!");
-    }
-    return it->second;
-  }
+  int32_t GetDepth(ResolveId id) const { return resolve_[id]; }
 
   void ResolveStmts(const std::vector<StmtId>& stmts) {
     for (StmtId id : stmts) {
@@ -206,6 +200,9 @@ class Resolver {
 
   void Resolve(ResolveId id, int32_t depth, const std::string& name) {
     // std::cerr << "Resolved " << name << " at " << -depth << '\n';
+    if (resolve_.size() < id + 1) {
+      resolve_.resize(id + 1);
+    }
     resolve_[id] = depth;
   }
 
@@ -238,7 +235,7 @@ class Resolver {
 
  private:
   std::vector<std::unordered_set<std::string>> contexts_;
-  std::unordered_map<ResolveId, int32_t> resolve_;
+  std::vector<int32_t> resolve_;
   const ExprStmtPool& pool_;
 };
 
