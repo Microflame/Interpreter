@@ -56,6 +56,11 @@ bool Object::AsBool() const {
   throw std::runtime_error("[Object::AsBool] Bad type");
 }
 
+double Object::AsFloat() const {
+  if (type_ == Type::INT) return int_;
+  return fp_;
+}
+
 std::string Object::ToString(const ExprStmtPool& pool) const {
   switch (type_) {
     case INT:
@@ -150,6 +155,43 @@ Object Object::SubFp(double other) const {
   if (type_ == Type::FLOAT) return MakeFloat(fp_ - other);
   if (type_ == Type::INT) return MakeFloat(int_ - other);
   throw std::runtime_error("[SubFp] bad left value type.");
+}
+
+template <typename T, typename U>
+bool DoCompare(T lvalue, U rvalue, TokenType op) {
+  switch (op) {
+    case TokenType::EQUAL_EQUAL:
+      return lvalue == rvalue;
+    case TokenType::BANG_EQUAL:
+      return lvalue != rvalue;
+    case TokenType::LESS:
+      return lvalue < rvalue;
+    case TokenType::LESS_EQUAL:
+      return lvalue <= rvalue;
+    case TokenType::GREATER:
+      return lvalue > rvalue;
+    case TokenType::GREATER_EQUAL:
+      return lvalue >= rvalue;
+    default:
+      throw std::runtime_error("[DoCompare] Bad op!");
+  }
+}
+
+bool Object::Compare(Object other, TokenType op,
+                     const ExprStmtPool& pool) const {
+  if (type_ == Type::STRING && other.type_ == Type::STRING) {
+    const std::string& lvalue = pool.strs_[str_id_];
+    const std::string& rvalue = pool.strs_[other.str_id_];
+    return DoCompare(lvalue, rvalue, op);
+  }
+  if (IsNumber() && other.IsNumber()) {
+    if (type_ == Type::FLOAT || other.type_ == Type::FLOAT) {
+      return DoCompare(AsFloat(), other.AsFloat(), op);
+    } else {
+      return DoCompare(int_, other.int_, op);
+    }
+  }
+  throw std::runtime_error("[IsEqual] invalid values.");
 }
 
 Object MakeInt(int64_t val) {

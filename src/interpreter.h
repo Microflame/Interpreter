@@ -318,7 +318,26 @@ class Interpreter {
     }
   }
 
-  Object EvalComparison(ComparisonExpr expr) { return MakeNone(); }
+  Object EvalComparison(ComparisonExpr expr) {
+    std::vector<Object> comps = EvalExprBlock(expr.comparables_);
+    const std::vector<TokenType>& ops = pool_.token_type_blocks_[expr.ops_];
+    if (comps.size() < 2) {
+      throw std::runtime_error("[EvalComparison] Bad number of comparables.");
+    }
+    if (ops.size() != comps.size() - 1) {
+      throw std::runtime_error("[EvalComparison] Bad number of ops.");
+    }
+    for (size_t i = 0; i < ops.size(); i++) {
+      if (!DoCompare(comps[i], comps[i + 1], ops[i])) {
+        return MakeBool(false);
+      }
+    }
+    return MakeBool(true);
+  }
+
+  bool DoCompare(Object left, Object right, TokenType op) {
+    return left.Compare(right, op, pool_);
+  }
 
   StackFrameId GetCurrentStackFrameId() {
     return (StackFrameId)stack_.size() - 1;

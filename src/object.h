@@ -47,6 +47,7 @@ struct Object {
   void AsssertType(Type type) const;
   bool IsNumber() const;
   bool AsBool() const;
+  double AsFloat() const;
 
   std::string ToString(const ExprStmtPool& pool) const;
 
@@ -62,6 +63,8 @@ struct Object {
   Object Sub(Object other) const;
   Object SubInt(int64_t other) const;
   Object SubFp(double other) const;
+
+  bool Compare(Object other, TokenType op, const ExprStmtPool& pool) const;
 };
 
 Object MakeInt(int64_t val);
