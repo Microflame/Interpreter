@@ -60,8 +60,8 @@ class Interpreter {
     switch (stmt.type_) {
       case Stmt::RETURN: {
         ReturnStmt s = stmt.return_;
-        has_return_ = true;
         retval_ = InterpretExpr(s.value_);
+        has_return_ = true;
         break;
       }
       case Stmt::DEF: {
@@ -144,7 +144,7 @@ class Interpreter {
   }
 
   Object InterpretExpr(ExprId id) {
-    if (id == -1) return MakeNone();
+    if (id == -1) throw std::runtime_error("[InterpretExpr] Bad ExprId");
     Expr expr = pool_.exprs_[id];
     return InterpretExpr(expr);
   }
@@ -350,6 +350,7 @@ class Interpreter {
     StackFrame* sf = &GetCurrentStackFrame();
     while (depth) {
       sf = &(stack_[sf->kPrevious]);
+      --depth;
     }
     return *sf;
   }
