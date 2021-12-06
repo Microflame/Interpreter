@@ -116,6 +116,10 @@ std::string ExprToString(Expr expr, const ExprStmtPool& pool) {
           ss << "<BUILTIN_FUNCTION>";
           break;
         }
+        case (Object::USER_FUNCTION): {
+          ss << "<USER_FUNCTION>";
+          break;
+        }
       }
       break;
     }

@@ -19,6 +19,14 @@ class Resolver {
     Define("print");
   }
 
+  int32_t GetDepth(ResolveId id) const {
+    auto it = resolve_.find(id);
+    if (it == resolve_.end()) {
+      throw std::runtime_error("[GetDepth] unknown ResolveId!");
+    }
+    return it->second;
+  }
+
   void ResolveStmts(const std::vector<StmtId>& stmts) {
     for (StmtId id : stmts) {
       ResolveStmt(id);
@@ -65,9 +73,9 @@ class Resolver {
       }
       case Stmt::BLOCK: {
         BlockStmt s = stmt.block_;
-        PushCtx();
+        // PushCtx();
         ResolveStmtBlock(s.statements_);
-        PopCtx();
+        // PopCtx();
         break;
       }
       case Stmt::EXPRESSION: {
@@ -86,9 +94,11 @@ class Resolver {
 
   void ResolveFunction(DefStmt s) {
     PushCtx();
-    const StrBlock& block = pool_.str_blocks_[s.params_];
-    for (StrId id : block) {
-      Define(id);
+    if (s.params_ != -1) {
+      const StrBlock& block = pool_.str_blocks_[s.params_];
+      for (StrId id : block) {
+        Define(id);
+      }
     }
     ResolveStmtBlock(s.body_);
     PopCtx();
@@ -165,12 +175,14 @@ class Resolver {
         AssignExpr e = expr.assign_;
         ResolveExpr(e.value_);
         const std::string& name = pool_.strs_[e.name_];
-        int32_t depth = FindDepth(name);
-        if (depth < 0) {
-          Define(name);
-          depth = 0;
-        }
-        Resolve(expr.id_, depth, name);
+        // int32_t depth = FindDepth(name);
+        // if (depth < 0) {
+        //   Define(name);
+        //   depth = 0;
+        // }
+        // Resolve(expr.assign_.id_, depth, name);
+        Define(name);
+        Resolve(expr.assign_.id_, 0, name);
         break;
       }
       case Expr::VARIABLE: {
@@ -180,7 +192,7 @@ class Resolver {
         if (depth < 0) {
           throw std::runtime_error("Undefined variable " + name);
         }
-        Resolve(expr.id_, depth, name);
+        Resolve(expr.variable_.id_, depth, name);
         break;
       }
       case Expr::CALL: {
@@ -192,7 +204,7 @@ class Resolver {
     }
   }
 
-  void Resolve(ExprId id, int32_t depth, const std::string& name) {
+  void Resolve(ResolveId id, int32_t depth, const std::string& name) {
     // std::cerr << "Resolved " << name << " at " << -depth << '\n';
     resolve_[id] = depth;
   }
@@ -226,7 +238,7 @@ class Resolver {
 
  private:
   std::vector<std::unordered_set<std::string>> contexts_;
-  std::unordered_map<ExprId, int32_t> resolve_;
+  std::unordered_map<ResolveId, int32_t> resolve_;
   const ExprStmtPool& pool_;
 };
 

@@ -21,7 +21,7 @@ class Parser {
         cur_(0),
         log_(Logger::kDebug),
         error_(false),
-        id_(1) {}
+        resolve_id_(-1) {}
 
   std::vector<StmtId> Parse() {
     std::vector<StmtId> statements;
@@ -48,7 +48,7 @@ class Parser {
   size_t cur_;
   Logger log_;
   bool error_;
-  size_t id_;
+  ResolveId resolve_id_;
 
   StmtId AddStmt(Stmt stmt) {
     // std::cout << "STMT: " << StmtTypeToString(stmt.type_) << std::endl;
@@ -103,9 +103,9 @@ class Parser {
     return expr_stmt_pool_.PushExpr(expr);
   }
 
-  ExprId AddAssignExpr(ExprId value, StrId name) {
+  ExprId AddAssignExpr(ResolveId id, ExprId value, StrId name) {
     Expr expr = {Expr::ASSIGN};
-    expr.assign_ = {.value_ = value, .name_ = name};
+    expr.assign_ = {.id_ = id, .value_ = value, .name_ = name};
     return AddExpr(expr);
   }
 
@@ -162,9 +162,9 @@ class Parser {
     return AddExpr(expr);
   }
 
-  ExprId AddVariableExpr(StrId name) {
+  ExprId AddVariableExpr(ResolveId id, StrId name) {
     Expr expr = {Expr::VARIABLE};
-    expr.variable_ = {.name_ = name};
+    expr.variable_ = {.id_ = id, .name_ = name};
     return AddExpr(expr);
   }
 
@@ -352,7 +352,7 @@ class Parser {
       Expr::Type lvalue_type = lvalue.type_;
 
       if (lvalue_type == Expr::VARIABLE) {
-        return AddAssignExpr(value, lvalue.variable_.name_);
+        return AddAssignExpr(GetNextResolveId(), value, lvalue.variable_.name_);
       } else if (lvalue_type == Expr::GET) {
         return AddSetExpr(lvalue.get_.object_, value, lvalue.get_.name_);
       } else {
@@ -463,9 +463,10 @@ class Parser {
   }
 
   ExprId ParseCall(ExprId callee) {
-    ExprBlockId args = expr_stmt_pool_.MakeNewExprBlock();
+    ExprBlockId args = -1;
 
     if (GetCurrentTokenType() != TokenType::RIGHT_PAREN) {
+      args = expr_stmt_pool_.MakeNewExprBlock();
       ExprId expr_id = ParseExpr();
       Expr expr = expr_stmt_pool_.exprs_[expr_id];
       expr_stmt_pool_.expr_blocks_[args].push_back(expr);
@@ -496,7 +497,7 @@ class Parser {
 
     if (GetCurrentTokenType() == TokenType::IDENTIFIER) {
       Token op = ConsumeToken(TokenType::IDENTIFIER);
-      return AddVariableExpr(op.data_.str_idx_);
+      return AddVariableExpr(GetNextResolveId(), op.data_.str_idx_);
     }
 
     ConsumeToken(TokenType::LEFT_PAREN);
@@ -641,6 +642,8 @@ class Parser {
     }
     return true;
   }
+
+  ResolveId GetNextResolveId() { return ++resolve_id_; }
 };
 
 }  // namespace ilang

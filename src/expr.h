@@ -28,6 +28,7 @@ struct SetExpr {
 };
 
 struct AssignExpr {
+  ResolveId id_;
   ExprId value_;
   StrId name_;
 };
@@ -63,6 +64,7 @@ struct UnaryExpr {
 };
 
 struct VariableExpr {
+  ResolveId id_;
   StrId name_;
 };
 
@@ -88,7 +90,7 @@ struct Expr {
     CALL
   } type_;
 
-  ExprId id_;  // TODO: Do we need this field in every Expr?
+  ExprId id_;
 
   union {
     ThisExpr this_;

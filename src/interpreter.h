@@ -65,7 +65,7 @@ class Interpreter {
         break;
       }
       case Stmt::DEF: {
-        DefStmt s = stmt.def_;
+        InterpretDef(stmt.def_);
         break;
       }
       case Stmt::CLASS: {
@@ -94,6 +94,12 @@ class Interpreter {
     }
   }
 
+  void InterpretDef(DefStmt stmt) {
+    Object fn = MakeUserFn(GetCurrentStackFrameId(), stmt.params_, stmt.body_);
+    const std::string& name = pool_.strs_[stmt.name_];
+    GetCurrentStackFrame().Set(name, fn);
+  }
+
   void InterpretIf(IfStmt stmt) {
     bool cond = InterpretExpr(stmt.condition_).AsBool();
     if (cond) {
@@ -104,10 +110,14 @@ class Interpreter {
   }
 
   void InterpretBlock(BlockStmt stmt) {
-    const StmtBlock& stmts = pool_.stmt_blocks_[stmt.statements_];
     // TODO: push frame
-    ExecuteStmts(stmts);
+    ExecuteStmts(stmt.statements_);
     // TODO: pop frame
+  }
+
+  void ExecuteStmts(StmtBlockId id) {
+    if (id == -1) return;
+    ExecuteStmts(pool_.stmt_blocks_[id]);
   }
 
   void ExecuteStmts(const StmtBlock& stmts) {
@@ -184,16 +194,43 @@ class Interpreter {
   Object EvalCall(CallExpr expr) {
     Object callee = InterpretExpr(expr.callee_);
     if (callee.type_ != Object::BUILTIN_FUNCTION &&
-        callee.type_ != Object::CALLABLE) {
+        callee.type_ != Object::USER_FUNCTION) {
       throw std::runtime_error("[EvalCall] Bad callee!");
     }
 
-    std::vector<Object> args = EvalExprBlock(expr.args_);
+    std::vector<Object> args;
+    if (expr.args_ != -1) {
+      args = EvalExprBlock(expr.args_);
+    }
     if (callee.type_ == Object::BUILTIN_FUNCTION) {
       return callee.builtin_fn_(args, pool_);
     } else {
-      throw std::runtime_error("Not supported");
+      return EvalUserFn(callee, args);
     }
+  }
+
+  Object EvalUserFn(Object callee, const std::vector<Object>& args) {
+    PushStackFrame(callee.stack_frame_);
+
+    if (callee.user_fn_.args_block_ != -1) {
+      const StrBlock& param_names =
+          pool_.str_blocks_[callee.user_fn_.args_block_];
+      if (args.size() != param_names.size()) {
+        throw std::runtime_error("[EvalUserFn] Wrong number of arguments");
+      }
+
+      StackFrame& sf = GetCurrentStackFrame();
+      for (size_t i = 0; i < args.size(); i++) {
+        const std::string& name = pool_.strs_[param_names[i]];
+        sf.Set(name, args[i]);
+      }
+    }
+
+    ExecuteStmts(callee.user_fn_.stmt_block_);
+
+    PopStackFrame();
+    has_return_ = false;
+    return retval_;
   }
 
   std::vector<Object> EvalExprBlock(ExprBlockId id) {
@@ -212,13 +249,15 @@ class Interpreter {
 
   Object EvalVariable(VariableExpr expr) {
     const std::string& name = pool_.strs_[expr.name_];
-    return GetCurrentStackFrame().Get(name);
+    int32_t depth = resolver_.GetDepth(expr.id_);
+    return GetStackFrame(depth).Get(name);
   }
 
   Object EvalAssign(AssignExpr expr) {
     const std::string& name = pool_.strs_[expr.name_];
     Object val = InterpretExpr(expr.value_);
-    GetCurrentStackFrame().Set(name, val);
+    int32_t depth = resolver_.GetDepth(expr.id_);
+    GetStackFrame(depth).Set(name, val);
     return val;
   }
 
@@ -288,6 +327,13 @@ class Interpreter {
   void PushStackFrame(StackFrameId prev) { stack_.emplace_back(prev); }
   void PopStackFrame() { stack_.pop_back(); }
   StackFrame& GetCurrentStackFrame() { return stack_.back(); }
+  StackFrame& GetStackFrame(int32_t depth) {
+    StackFrame* sf = &GetCurrentStackFrame();
+    while (depth) {
+      sf = &(stack_[sf->kPrevious]);
+    }
+    return *sf;
+  }
 
  private:
   const ExprStmtPool& pool_;

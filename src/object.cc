@@ -27,6 +27,8 @@ const char* Object::GetTypeName(Type type) {
       return "INSTANCE";
     case BUILTIN_FUNCTION:
       return "BUILTIN_FUNCTION";
+    case USER_FUNCTION:
+      return "USER_FUNCTION";
     case NONE:
       return "NONE";
   }
@@ -65,17 +67,14 @@ std::string Object::ToString(const ExprStmtPool& pool) const {
       return pool.strs_[str_id_];
     case BOOLEAN:
       return int_ ? "True" : "False";
-    case CALLABLE:
-      return "CALLABLE";
-    case CLASS:
-      return "CLASS";
-    case INSTANCE:
-      return "INSTANCE";
-    case BUILTIN_FUNCTION:
-      return "BUILTIN_FUNCTION";
-    case NONE: {
+    case NONE:
       return "None";
-    }
+    case CALLABLE:
+    case CLASS:
+    case INSTANCE:
+    case BUILTIN_FUNCTION:
+    case USER_FUNCTION:
+      return GetTypeName();
   }
 }
 
@@ -181,6 +180,14 @@ Object MakeNone() {
 Object MakeBuiltin(BuiltinFn fn) {
   // std::cerr << "MakeBuiltin\n";
   return {.type_ = Object::BUILTIN_FUNCTION, .builtin_fn_ = fn};
+}
+
+Object MakeUserFn(StackFrameId prev_frame, StrBlockId args, StmtBlockId stmts) {
+  // std::cerr << "MakeUserFn\n";
+  Object res = {.type_ = Object::USER_FUNCTION, .stack_frame_ = prev_frame};
+  res.user_fn_.args_block_ = args;
+  res.user_fn_.stmt_block_ = stmts;
+  return res;
 }
 
 }  // namespace ilang

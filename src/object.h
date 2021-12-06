@@ -10,6 +10,11 @@ struct Object;
 using BuiltinFn = Object (*)(const std::vector<Object>&, const ExprStmtPool&);
 
 struct Object {
+  struct UserFn {
+    StrBlockId args_block_;
+    StmtBlockId stmt_block_;
+  };
+
   enum Type : int8_t {
     INT,
     FLOAT,
@@ -20,14 +25,18 @@ struct Object {
     CLASS,
     INSTANCE,
     BUILTIN_FUNCTION,
+    USER_FUNCTION,
     NONE
   } type_;
+
+  StackFrameId stack_frame_;
 
   union {
     int64_t int_;
     double fp_;
     StrId str_id_;
     BuiltinFn builtin_fn_;
+    UserFn user_fn_;
   };
 
   static const char* GetTypeName(Type type);
@@ -61,5 +70,6 @@ Object MakeString(StrId val);
 Object MakeBool(bool val);
 Object MakeNone();
 Object MakeBuiltin(BuiltinFn fn);
+Object MakeUserFn(StackFrameId prev_frame, StrBlockId args, StmtBlockId stmts);
 
 }  // namespace ilang
