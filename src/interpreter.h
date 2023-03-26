@@ -216,9 +216,12 @@ class Interpreter {
       throw std::runtime_error("[EvalCall] Bad callee!");
     }
 
-    std::vector<Object> args;
+    size_t num_args = GetExprBlockSize(expr.args_);
+    Object* args_dest = (Object*) alloca(num_args * sizeof(Object));
+    std::span<Object> args(args_dest, num_args);
+
     if (expr.args_ != -1) {
-      args = EvalExprBlock(expr.args_);
+      EvalExprBlock(expr.args_, args);
     }
     if (callee.type_ == Object::BUILTIN_FUNCTION) {
       return callee.builtin_fn_(args, pool_);
@@ -227,7 +230,7 @@ class Interpreter {
     }
   }
 
-  Object EvalUserFn(Object callee, const std::vector<Object>& args) {
+  Object EvalUserFn(Object callee, std::span<Object> args) {
     PushStackFrame(callee.stack_frame_);
 
     if (callee.user_fn_.args_block_ != -1) {
@@ -251,18 +254,28 @@ class Interpreter {
     return retval_;
   }
 
-  std::vector<Object> EvalExprBlock(ExprBlockId id) {
-    if (id == -1) return {};
-    const ExprBlock& block = pool_.expr_blocks_[id];
-    return EvalExprBlock(block);
+  size_t GetExprBlockSize(ExprBlockId id)
+  {
+    if (id == -1) return 0;
+    return pool_.expr_blocks_[id].size();
   }
-  std::vector<Object> EvalExprBlock(const ExprBlock& block) {
-    std::vector<Object> res;
-    res.reserve(block.size());
-    for (Expr e : block) {
-      res.push_back(InterpretExpr(e));
+
+  void EvalExprBlock(ExprBlockId id, std::span<Object> args_dest) {
+    if (id == -1) return;
+    const ExprBlock& block = pool_.expr_blocks_[id];
+    return EvalExprBlock(block, args_dest);
+  }
+
+  void EvalExprBlock(const ExprBlock& block, std::span<Object> args_dest) {
+    if (block.size() != args_dest.size()) {
+      throw std::runtime_error("[EvalExprBlock] args/block size mismatch");
     }
-    return res;
+    size_t i = 0;
+    for (Expr e : block) {
+      args_dest[i] = InterpretExpr(e);
+      i++;
+    }
+    return;
   }
 
   Object EvalVariable(VariableExpr expr) {
@@ -337,7 +350,12 @@ class Interpreter {
   }
 
   Object EvalComparison(ComparisonExpr expr) {
-    std::vector<Object> comps = EvalExprBlock(expr.comparables_);
+    size_t num_args = GetExprBlockSize(expr.comparables_);
+    Object* args_dest = (Object*) alloca(num_args * sizeof(Object));
+    std::span<Object> comps(args_dest, num_args);
+
+    EvalExprBlock(expr.comparables_, comps);
+
     const std::vector<TokenType>& ops = pool_.token_type_blocks_[expr.ops_];
     if (comps.size() < 2) {
       throw std::runtime_error("[EvalComparison] Bad number of comparables.");

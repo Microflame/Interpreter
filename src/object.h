@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+#include <span>
 
 #include "types.h"
 
@@ -9,7 +9,7 @@ namespace ilang {
 struct ExprStmtPool;
 
 struct Object;
-using BuiltinFn = Object (*)(const std::vector<Object>&, const ExprStmtPool&);
+using BuiltinFn = Object (*)(std::span<Object>, const ExprStmtPool&);
 
 struct Object {
   struct UserFn {
