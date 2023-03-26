@@ -166,7 +166,7 @@ class Interpreter {
     return InterpretExpr(pool_.exprs_[id]);
   }
 
-  Object InterpretExpr(Expr expr) {
+  Object InterpretExpr(const Expr& expr) {
     switch (expr.type_) {
       case Expr::THIS: {
         // ThisExpr e = expr.this_;
@@ -270,7 +270,7 @@ class Interpreter {
       throw std::runtime_error("[EvalExprBlock] args/block size mismatch");
     }
     size_t i = 0;
-    for (Expr e : block) {
+    for (const Expr& e : block) {
       args_dest[i] = InterpretExpr(e);
       i++;
     }
