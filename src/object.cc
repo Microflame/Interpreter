@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <string>
 
 #include "expr_stmt_pool.h"
 
@@ -81,6 +82,7 @@ std::string Object::ToString(const ExprStmtPool& pool) const {
     case USER_FUNCTION:
       return GetTypeName();
   }
+  return "<INVALID_TYPE>";
 }
 
 Object Object::Mult(Object other) const {
@@ -221,7 +223,7 @@ Object MakeNone() {
 
 Object MakeBuiltin(BuiltinFn fn) {
   // std::cerr << "MakeBuiltin\n";
-  return {.type_ = Object::BUILTIN_FUNCTION, .builtin_fn_ = fn};
+  return Object{.type_ = Object::BUILTIN_FUNCTION, .builtin_fn_ = fn};
 }
 
 Object MakeUserFn(StackFrameId prev_frame, StrBlockId args, StmtBlockId stmts) {

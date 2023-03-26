@@ -1,4 +1,4 @@
-// this impl finishes fib(40) in 220 s.
+// old impl finishes fib(40) in 220 s.
 // reference is said to finish in 72 s.
 
 func fib(n) {

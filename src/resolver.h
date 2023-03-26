@@ -200,7 +200,7 @@ class Resolver {
 
   void Resolve(ResolveId id, int32_t depth, const std::string& name) {
     // std::cerr << "Resolved " << name << " at " << -depth << '\n';
-    if (resolve_.size() < id + 1) {
+    if (resolve_.size() < size_t(id + 1)) {
       resolve_.resize(id + 1);
     }
     resolve_[id] = depth;
