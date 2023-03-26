@@ -28,6 +28,14 @@ struct ExprStmtPool {
   }
 
   StrId PushStr(std::string&& str) {
+    for (size_t i = 0; i < strs_.size(); i++)
+    {
+      if (strs_[i] == str)
+      {
+        return i;
+      }
+    }
+
     StrId id = strs_.size();
     strs_.emplace_back(std::move(str));
     return id;

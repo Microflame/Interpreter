@@ -68,8 +68,7 @@ TokenMeta TokenSpawner::MakeTokenMeta(TokenType type) {
 }
 
 StrId TokenSpawner::StoreString(std::string&& str) {
-  pool_->strs_.emplace_back(std::move(str));
-  return pool_->strs_.size() - 1;
+  return pool_->PushStr(std::move(str));
 }
 
 }  // namespace ilang

@@ -14,7 +14,7 @@ class StackFrame {
  public:
   StackFrame(StackFrameId prev) : kPrevious(prev) {}
 
-  void Set(const std::string& name, Object obj) {
+  void Set(StrId name, Object obj) {
     Object* found = Find(name);
     if (found) {
       *found = obj;
@@ -24,7 +24,7 @@ class StackFrame {
     }
   }
 
-  Object Get(const std::string& name) {
+  Object Get(StrId name) {
     Object* obj = Find(name);
     if (!obj) {
       throw std::runtime_error("[StackFrame::Get] Undefined variable " + name);
@@ -32,7 +32,7 @@ class StackFrame {
     return *obj;
   }
 
-  Object* Find(const std::string& name) {
+  Object* Find(StrId name) {
     for (size_t i = 0; i < names_.size(); i++) {
       if (names_[i] == name) {
         return &variables_[i];
@@ -45,13 +45,13 @@ class StackFrame {
   const StackFrameId kPrevious;
 
  private:
-  std::vector<std::string> names_;
+  std::vector<StrId> names_;
   std::vector<Object> variables_;
 };
 
 class Interpreter {
  public:
-  Interpreter(const ExprStmtPool& pool, const Resolver& resolver)
+  Interpreter(ExprStmtPool& pool, const Resolver& resolver)
       : pool_(pool), resolver_(resolver) {}
 
   void Interpret(const std::vector<StmtId>& stmts) {
@@ -65,7 +65,7 @@ class Interpreter {
 
   void AddBuiltins() {
     StackFrame& frame = GetCurrentStackFrame();
-    frame.Set("print", MakeBuiltin(PrintBuiltin));
+    frame.Set(pool_.PushStr("print"), MakeBuiltin(PrintBuiltin));
   }
 
   void InterpretStmt(StmtId id) {
@@ -114,8 +114,7 @@ class Interpreter {
 
   void InterpretDef(DefStmt stmt) {
     Object fn = MakeUserFn(GetCurrentStackFrameId(), stmt.params_, stmt.body_);
-    const std::string& name = pool_.strs_[stmt.name_];
-    GetCurrentStackFrame().Set(name, fn);
+    GetCurrentStackFrame().Set(stmt.name_, fn);
   }
 
   void InterpretIf(IfStmt stmt) {
@@ -210,6 +209,7 @@ class Interpreter {
 
   Object EvalCall(CallExpr expr) {
     Object callee = InterpretExpr(expr.callee_);
+
     if (callee.type_ != Object::BUILTIN_FUNCTION &&
         callee.type_ != Object::USER_FUNCTION) {
       throw std::runtime_error("[EvalCall] Bad callee!");
@@ -241,8 +241,7 @@ class Interpreter {
 
       StackFrame& sf = GetCurrentStackFrame();
       for (size_t i = 0; i < args.size(); i++) {
-        const std::string& name = pool_.strs_[param_names[i]];
-        sf.Set(name, args[i]);
+        sf.Set(param_names[i], args[i]);
       }
     }
 
@@ -278,16 +277,14 @@ class Interpreter {
   }
 
   Object EvalVariable(VariableExpr expr) {
-    const std::string& name = pool_.strs_[expr.name_];
     int32_t depth = resolver_.GetDepth(expr.id_);
-    return GetStackFrame(depth).Get(name);
+    return GetStackFrame(depth).Get(expr.name_);
   }
 
   Object EvalAssign(AssignExpr expr) {
-    const std::string& name = pool_.strs_[expr.name_];
     Object val = InterpretExpr(expr.value_);
     int32_t depth = resolver_.GetDepth(expr.id_);
-    GetStackFrame(depth).Set(name, val);
+    GetStackFrame(depth).Set(expr.name_, val);
     return val;
   }
 
@@ -391,7 +388,7 @@ class Interpreter {
   }
 
  private:
-  const ExprStmtPool& pool_;
+  ExprStmtPool& pool_;
   const Resolver& resolver_;
   std::vector<StackFrame> stack_;
 
