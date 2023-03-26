@@ -162,9 +162,8 @@ class Interpreter {
   }
 
   Object InterpretExpr(ExprId id) {
-    if (id == -1) throw std::runtime_error("[InterpretExpr] Bad ExprId");
-    Expr expr = pool_.exprs_[id];
-    return InterpretExpr(expr);
+    if (id == -1) [[unlikely]] return MakeNone();
+    return InterpretExpr(pool_.exprs_[id]);
   }
 
   Object InterpretExpr(Expr expr) {
