@@ -199,7 +199,6 @@ class Resolver {
   }
 
   void Resolve(ResolveId id, int32_t depth, const std::string& name) {
-    // std::cerr << "Resolved " << name << " at " << -depth << '\n';
     if (resolve_.size() < size_t(id + 1)) {
       resolve_.resize(id + 1);
     }
@@ -220,16 +219,13 @@ class Resolver {
 
   void Define(StrId id) { Define(pool_.strs_[id]); }
   void Define(const std::string& name) {
-    // std::cerr << "Defined " << name << '\n';
     contexts_.back().insert(name);
   }
 
   void PushCtx() {
-    // std::cerr << "PushCtx\n";
     contexts_.emplace_back();
   }
   void PopCtx() {
-    // std::cerr << "PopCtx\n";
     contexts_.pop_back();
   }
 
