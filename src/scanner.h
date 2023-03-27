@@ -10,253 +10,246 @@
 
 namespace ilang {
 
+static bool IsInRange(char chr, char lo, char hi) {
+  return (chr >= lo) && (chr <= hi);
+}
+
+static bool IsDigit(char chr) { return IsInRange(chr, '0', '9'); }
+
+static bool IsAlpha(char chr) {
+  return IsInRange(chr, 'a', 'z') || IsInRange(chr, 'A', 'Z') || (chr == '_');
+}
+
+static bool IsAlphanum(char chr) { return IsAlpha(chr) || IsDigit(chr); }
+
+static constexpr uint16_t JoinChars(uint16_t first, uint16_t second) {
+  return (first << 8) | second;
+}
+
 class Scanner {
  public:
-  Scanner() : log_(Logger::kWarning) {}
+  Scanner() :
+    keywords_({
+      {"and", TokenType::AND},
+      {"or", TokenType::OR},
+      {"not", TokenType::NOT},
+      {"if", TokenType::IF},
+      {"else", TokenType::ELSE},
+      {"True", TokenType::TRUE},
+      {"False", TokenType::FALSE},
+      {"class", TokenType::CLASS},
+      {"def", TokenType::DEF},
+      {"return", TokenType::RETURN},
+      {"for", TokenType::FOR},
+      {"in", TokenType::IN},
+      {"while", TokenType::WHILE},
+      {"none", TokenType::NONE},
+      {"super", TokenType::SUPER},
+      {"self", TokenType::THIS},
+    }),
+    log_(Logger::kWarning) {}
 
-  std::vector<Token> GetTokens(const std::string& source,
+  std::vector<Token> GetTokens(std::string source,
                                TokenSpawner* token_spawner) {
     token_spawner_ = token_spawner;
-    begin_ = source.data();
+    source.append(16, '\0');
     cur_ = source.data();
-    end_ = source.data() + source.size();
+    end_ = source.data() + source.size() - 16;
     error_ = false;
-    is_at_bol_ = true;
-    indent_level_ = 0;
+    col_idx_ = 0;
     current_indent_level_ = 0;
-    current_indent_col_ = 0;
-    indent_stack_ = {};
+    single_indent_length_ = 0;
+    result_ = {};
 
     log_(Logger::kDebug, "Scanner started.");
 
-    std::vector<Token> result;
-
     while (!IsAtEOF()) {
-      Token tok = GetNextToken();
-      if (tok.GetType() == TokenType::EMPTY_TOKEN ||
-          tok.GetType() == TokenType::COMMENT) {
-        continue;
-      }
-      result.push_back(tok);
+      Parse();
     }
-    HandleEOF(&result);
+    FinishFile();
 
     log_(Logger::kDebug, "Scanner finished with %d non empty tokens.",
-         result.size());
-    return result;
+         result_.size());
+    return std::move(result_);
   }
 
   bool HasError() { return error_; }
 
  private:
+  const std::unordered_map<std::string, TokenType> keywords_;
+
+  std::vector<Token> result_;
+
   TokenSpawner* token_spawner_;
 
-  const char* begin_;
   const char* cur_;
   const char* end_;
 
-  TokenType cur_token_type_;
-  size_t cur_token_length_;
-  struct {
-    int64_t int_;
-    double fp_;
-    std::string str_;
-  } token_content_;
-
   Logger log_;
   bool error_;
-  bool is_at_bol_;
+  int col_idx_;
 
-  int indent_level_;
+  int single_indent_length_;
   int current_indent_level_;
-  int current_indent_col_;
-  std::vector<int> indent_stack_;
 
-  void HandleEOF(std::vector<Token>* tokens) {
-    tokens->push_back(ExtractToken(TokenType::NEWLINE, 0));
-    while (indent_stack_.size()) {
-      indent_stack_.pop_back();
-      tokens->push_back(ExtractToken(TokenType::UNINDENT, 0));
+  void FinishFile() {
+    PushAnyToken(TokenType::NEWLINE, 0);
+    while (current_indent_level_) {
+      current_indent_level_ -= 1;
+      PushAnyToken(TokenType::UNINDENT, 0);
     }
-    tokens->push_back(ExtractToken(TokenType::END_OF_FILE, 0));
+    PushAnyToken(TokenType::END_OF_FILE, 0);
   }
 
-  bool IsAtEOF() { return cur_ == end_; }
+  bool IsAtEOF() { return cur_ >= end_; }
 
-  Token GetNextToken() {
-    cur_token_type_ = TokenType::BAD_TOKEN;
-    cur_token_length_ = 0;
+  void Parse() {
+    if (TryGetIndentation()) return;
+    if (TryGetIntToken()) return;
+    if (TryGetFloatToken()) return;
+    if (TryGetStringToken()) return;
 
-    if (is_at_bol_) {
-      is_at_bol_ = false;
-      int line_indent = 0;
-      size_t i = 0;
-      size_t remaining = Remaining();
-      while (i < remaining && (cur_[i] == ' ' || cur_[i] == '\t')) {
-        line_indent += 1;
-        i += 1;
-      }
-      if (Remaining() && cur_[i] == '#') {
-        return ExtractToken(TokenType::EMPTY_TOKEN, i);
-      }
-
-      if (line_indent > current_indent_col_) {
-        indent_stack_.push_back(line_indent - current_indent_col_);
-        current_indent_col_ = line_indent;
-        current_indent_level_ += 1;
-      }
-      while (line_indent < current_indent_col_ && indent_stack_.size()) {
-        current_indent_col_ -= indent_stack_.back();
-        indent_stack_.pop_back();
-        current_indent_level_ -= 1;
-      }
-      if (line_indent != current_indent_col_) {
-        auto pos = GetPosition(GetRemaining());
-        ReportError("[SCANNER]:%d:%d: indentation error.", pos.line,
-                    pos.column);
-        return ExtractToken(TokenType::BAD_TOKEN, i);
-      }
-      return ExtractToken(TokenType::EMPTY_TOKEN, i);
-    }
-
-    while (current_indent_level_ != indent_level_) {
-      if (current_indent_level_ > indent_level_) {
-        indent_level_ += 1;
-        return ExtractToken(TokenType::INDENT, 0);
+    std::string identifier = GetIdentifier();
+    if (identifier.size()) {
+      auto it = keywords_.find(identifier);
+      if (it != keywords_.end()) {
+        PushAnyToken(it->second, identifier.size());
       } else {
-        indent_level_ -= 1;
-        return ExtractToken(TokenType::UNINDENT, 0);
+        PushIdentifierToken(std::move(identifier), identifier.size());
       }
     }
 
-    TryGetKeywordToken("and", TokenType::AND);
-    TryGetKeywordToken("or", TokenType::OR);
-    TryGetKeywordToken("not", TokenType::NOT);
-    TryGetKeywordToken("if", TokenType::IF);
-    TryGetKeywordToken("else", TokenType::ELSE);
-    TryGetKeywordToken("True", TokenType::TRUE);
-    TryGetKeywordToken("False", TokenType::FALSE);
-    TryGetKeywordToken("class", TokenType::CLASS);
-    TryGetKeywordToken("def", TokenType::DEF);
-    TryGetKeywordToken("return", TokenType::RETURN);
-    TryGetKeywordToken("for", TokenType::FOR);
-    TryGetKeywordToken("in", TokenType::IN);
-    TryGetKeywordToken("while", TokenType::WHILE);
-    TryGetKeywordToken("none", TokenType::NONE);
-    TryGetKeywordToken("super", TokenType::SUPER);
-    TryGetKeywordToken("self", TokenType::THIS);
-
-    TryGetIntToken();
-    TryGetFloatToken();
-    TryGetIdentifierToken();
-    TryGetStringToken();
-    // TryGetMultilineStringToken();
-    TryGetCommentToken();
-
-    if (cur_token_length_) {
-      return ExtractCurrentToken();
-    }
+    bool next_is_eq = cur_[1] == '=';
 
     switch (*cur_) {
-      case '\n':
-        is_at_bol_ = true;
-        return ExtractToken(TokenType::NEWLINE, 1);
       case ' ':
-      case '\t':
       case '\r':
-      case '\v':
-      case '\f':
-        return ExtractToken(TokenType::EMPTY_TOKEN, 1);
+        PushNothing(1); break;
+      case '\n':
+        PushAnyToken(TokenType::NEWLINE, 1);
+        col_idx_ = 0;
+        break;
+      case '#':
+        FinishLine(); break;
       case '(':
-        return ExtractToken(TokenType::LEFT_PAREN, 1);
+        PushAnyToken(TokenType::LEFT_PAREN, 1); break;
       case ')':
-        return ExtractToken(TokenType::RIGHT_PAREN, 1);
+        PushAnyToken(TokenType::RIGHT_PAREN, 1); break;
       case '{':
-        return ExtractToken(TokenType::LEFT_BRACE, 1);
+        PushAnyToken(TokenType::LEFT_BRACE, 1); break;
       case '}':
-        return ExtractToken(TokenType::RIGHT_BRACE, 1);
+        PushAnyToken(TokenType::RIGHT_BRACE, 1); break;
       case '[':
-        return ExtractToken(TokenType::LEFT_BRAKET, 1);
+        PushAnyToken(TokenType::LEFT_BRAKET, 1); break;
       case ']':
-        return ExtractToken(TokenType::RIGHT_BRAKET, 1);
+        PushAnyToken(TokenType::RIGHT_BRAKET, 1); break;
       case ',':
-        return ExtractToken(TokenType::COMMA, 1);
+        PushAnyToken(TokenType::COMMA, 1); break;
       case '.':
-        return ExtractToken(TokenType::DOT, 1);
+        PushAnyToken(TokenType::DOT, 1); break;
       case '+':
-        return ExtractToken(TokenType::PLUS, 1);
+        PushAnyToken(TokenType::PLUS, 1); break;
       case '-':
-        return ExtractToken(TokenType::MINUS, 1);
+        PushAnyToken(TokenType::MINUS, 1); break;
       case ':':
-        return ExtractToken(TokenType::COLON, 1);
+        PushAnyToken(TokenType::COLON, 1); break;
       case ';':
-        return ExtractToken(TokenType::SEMICOLON, 1);
+        PushAnyToken(TokenType::SEMICOLON, 1); break;
       case '*':
-        return ExtractToken(TokenType::STAR, 1);
+        PushAnyToken(TokenType::STAR, 1); break;
       case '/':
-        return ExtractToken(TokenType::SLASH, 1);
+        PushAnyToken(TokenType::SLASH, 1); break;
       // Double char op
       case '!':
-        return MatchChar(1, '=') ? ExtractToken(TokenType::BANG_EQUAL, 2)
-                                 : ExtractToken(TokenType::BANG, 1);
+        next_is_eq ? PushAnyToken(TokenType::BANG_EQUAL, 2) : PushAnyToken(TokenType::BANG, 1); break;
       case '=':
-        return MatchChar(1, '=') ? ExtractToken(TokenType::EQUAL_EQUAL, 2)
-                                 : ExtractToken(TokenType::EQUAL, 1);
+        next_is_eq ? PushAnyToken(TokenType::EQUAL_EQUAL, 2) : PushAnyToken(TokenType::EQUAL, 1); break;
       case '>':
-        return MatchChar(1, '=') ? ExtractToken(TokenType::GREATER_EQUAL, 2)
-                                 : ExtractToken(TokenType::GREATER, 1);
+        next_is_eq ? PushAnyToken(TokenType::GREATER_EQUAL, 2) : PushAnyToken(TokenType::GREATER, 1); break;
       case '<':
-        return MatchChar(1, '=') ? ExtractToken(TokenType::LESS_EQUAL, 2)
-                                 : ExtractToken(TokenType::LESS, 1);
+        next_is_eq ? PushAnyToken(TokenType::LESS_EQUAL, 2) : PushAnyToken(TokenType::LESS, 1); break;
       default:
         auto pos = GetPosition(GetRemaining());
         ReportError("[SCANNER]:%d:%d: bad token.", pos.line, pos.column);
-        return ExtractToken(TokenType::BAD_TOKEN, 1);
+        FinishLine();
     }
   }
 
-  void UpdateCurrentToken(TokenType type, size_t size) {
-    if (size > cur_token_length_) {
-      cur_token_type_ = type;
-      cur_token_length_ = size;
+  bool TryGetIndentation() {
+    if (col_idx_ != 0) {
+      return false;
     }
+
+    size_t num_indent_symbols = 0;
+    while (num_indent_symbols < Remaining() && cur_[num_indent_symbols] == ' ') {
+      num_indent_symbols += 1;
+    }
+    
+    char cur_chr = cur_[num_indent_symbols];
+    if (cur_chr == '#' || cur_chr == '\r' || cur_chr == '\n') {
+      return false;
+    }
+
+    if (single_indent_length_ == 0) {
+      single_indent_length_ = num_indent_symbols;
+    }
+
+    if (!single_indent_length_) {
+      return false;
+    }
+
+    if (num_indent_symbols % single_indent_length_) {
+      auto pos = GetPosition(GetRemaining());
+      ReportError("[SCANNER]:%d:%d: bad token.", pos.line, pos.column);
+      FinishLine();
+      return true;
+    }
+
+    int level = num_indent_symbols / single_indent_length_;
+
+    if (level == current_indent_level_) {
+      return false;
+    }
+
+    if (level < current_indent_level_) {
+      PushNothing(num_indent_symbols);
+    }
+
+    while (level != current_indent_level_) {
+      if (level < current_indent_level_) {
+        PushAnyToken(TokenType::UNINDENT, 0);
+        current_indent_level_ -= 1;
+      } else {
+        PushAnyToken(TokenType::INDENT, single_indent_length_);
+        current_indent_level_ += 1;
+      }
+    }
+    return true;
   }
 
-  void TryGetKeywordToken(const std::string& target, TokenType type) {
-    size_t token_len = target.size();
-    if (token_len < cur_token_length_) {
-      return;
-    }
-    if (Remaining() >= token_len &&
-        memcmp(target.data(), cur_, token_len) == 0) {
-      cur_token_type_ = type;
-      cur_token_length_ = token_len;
-    }
-  }
-
-  void TryGetIntToken() {
+  bool TryGetIntToken() {
     size_t i = 0;
+    int64_t value = 0;
     while (IsDigit(cur_[i])) {
+      value = value * 10 + (cur_[i] - '0');
       ++i;
     }
 
     if (!i) {
-      return;
+      return false;
     }
 
-    int64_t value = std::stoll(std::string(cur_, cur_ + i));
-    token_content_.int_ = value;
-    UpdateCurrentToken(TokenType::INT_LITERAL, i);
+    PushIntToken(value, i);
+    return true;
   }
 
-  void TryGetFloatToken() {
+  bool TryGetFloatToken() {
     if (!IsDigit(cur_[0]) && cur_[0] != '.') {
-      return;
+      return false;
     }
     size_t i = 0;
     size_t whole_part_size = 0;
     size_t fractional_part_size = 0;
-    bool has_dot = false;
 
     // whole part
     while (IsDigit(cur_[whole_part_size])) {
@@ -266,7 +259,6 @@ class Scanner {
 
     if (cur_[i] == '.') {
       ++i;
-      has_dot = true;
     }
 
     // fractional part
@@ -276,72 +268,36 @@ class Scanner {
     i += fractional_part_size;
 
     if (!whole_part_size && !fractional_part_size) {
-      return;
+      return false;
     }
 
-    if (cur_[i] != 'e' && cur_[i] != 'E') {
-      if (has_dot) {
-        double value = std::stod(std::string(cur_, cur_ + i));
-        token_content_.fp_ = value;
-        UpdateCurrentToken(TokenType::FLOAT_LITERAL, i);
+    size_t until_exp = i;
+
+    if (cur_[i] == 'e' || cur_[i] == 'E') {
+      i += 1;
+      if (cur_[i] == '-' || cur_[i] == '+') {
+        i += 1;
       }
-      return;
+      if (!IsDigit(cur_[i])) {
+        i = until_exp;
+      } else {
+        while (IsDigit(cur_[i])) {
+          ++i;
+        }
+      }
     }
 
-    // exponent
-    size_t mantissa = i;
-    ++i;
-    if ((cur_[i] == '-') || (cur_[i] == '+')) {
-      ++i;
-    }
-
-    if (!IsDigit(cur_[i])) {
-      double value = std::stod(std::string(cur_, cur_ + mantissa));
-      token_content_.fp_ = value;
-      UpdateCurrentToken(TokenType::FLOAT_LITERAL, mantissa);
-      return;
-    }
-
-    while (IsDigit(cur_[i])) {
-      ++i;
-    }
     double value = std::stod(std::string(cur_, cur_ + i));
-    token_content_.fp_ = value;
-    UpdateCurrentToken(TokenType::FLOAT_LITERAL, i);
+    PushFloatToken(value, i);
+    return true;
   }
 
-  void TryGetIdentifierToken() {
-    size_t i = 0;
-    if (!IsAlpha(*cur_)) {
-      return;
-    }
-    ++i;
-
-    while (IsAlphanum(cur_[i])) {
-      ++i;
-    }
-
-    token_content_.str_ = std::string(cur_, cur_ + i);
-    UpdateCurrentToken(TokenType::IDENTIFIER, i);
-  }
-
-  void TryGetCommentToken() {
-    if (*cur_ != '#') return;
-    size_t remaining = Remaining();
-    size_t i = 1;
-    while (i < remaining && cur_[i] != '\n') {
-      ++i;
-    }
-    token_content_.str_ = std::string(cur_ + 1, cur_ + i);
-    UpdateCurrentToken(TokenType::COMMENT, i);
-  }
-
-  void TryGetStringToken() {
+  bool TryGetStringToken() {
     char quote = '\0';
     if (*cur_ == '"' || *cur_ == '\'') {
       quote = *cur_;
     } else {
-      return;
+      return false;
     }
 
     std::string result;
@@ -352,8 +308,8 @@ class Scanner {
         auto pos = GetPosition(GetRemaining());
         ReportError("[SCANNER]:%d:%d: unexpected end of line inside of string.",
                     pos.line, pos.column);
-        UpdateCurrentToken(TokenType::BAD_TOKEN, i);
-        return;
+        FinishLine();
+        return true;
       }
       if (escape) {
         escape = false;
@@ -384,15 +340,30 @@ class Scanner {
         continue;
       }
       if (cur_[i] == quote) {
-        token_content_.str_ = std::move(result);
-        UpdateCurrentToken(TokenType::STRING, i + 1);
-        return;
+        PushStringToken(std::move(result), i);
+        return true;
       }
       result += cur_[i];
     }
     auto pos = GetPosition(GetRemaining());
-    ReportError("[SCANNER]:%d:%d: invalid symbol.", pos.line, pos.column);
-    UpdateCurrentToken(TokenType::BAD_TOKEN, Remaining());
+    ReportError("[SCANNER]:%d:%d: Expected closing quote.", pos.line, pos.column);
+    FinishLine();
+    return true;
+  }
+
+  std::string GetIdentifier() {
+    std::string res;
+    size_t i = 0;
+    if (!IsAlpha(*cur_)) {
+      return {};
+    }
+    ++i;
+
+    while (IsAlphanum(cur_[i])) {
+      ++i;
+    }
+
+    return std::string(cur_, cur_ + i);
   }
 
   bool MatchChar(size_t offset, char chr) {
@@ -400,45 +371,52 @@ class Scanner {
     return (s < end_) && (*s == chr);
   }
 
-  Token ExtractCurrentToken() {
-    return ExtractToken(cur_token_type_, cur_token_length_);
-  }
-
-  Token ExtractToken(TokenType type, size_t size) {
-    cur_ += size;
-    switch (type) {
-      case TokenType::COMMENT:
-      case TokenType::STRING:
-      case TokenType::IDENTIFIER:
-        return token_spawner_->Spawn(type, std::move(token_content_.str_));
-      case TokenType::INT_LITERAL:
-        return token_spawner_->Spawn(type, token_content_.int_);
-      case TokenType::FLOAT_LITERAL:
-        return token_spawner_->Spawn(type, token_content_.fp_);
-      default:
-        return token_spawner_->Spawn(type);
-    }
-  }
-
-  size_t GetOffsetFromSrcStart() { return cur_ - begin_; }
-
   std::string_view GetRemaining() {
     return std::string_view(cur_, end_ - cur_);
   }
 
   size_t Remaining() { return end_ - cur_; }
 
-  bool IsInRange(char chr, char lo, char hi) {
-    return (chr >= lo) && (chr <= hi);
+  void FinishLine() {
+    while (Remaining() && *cur_ != '\n')
+    {
+      cur_ += 1;
+      col_idx_ += 1;
+    }
   }
 
-  bool IsDigit(char chr) { return IsInRange(chr, '0', '9'); }
-
-  bool IsAlpha(char chr) {
-    return IsInRange(chr, 'a', 'z') || IsInRange(chr, 'A', 'Z') || (chr == '_');
+  void PushNothing(size_t advance) {
+    cur_ += advance;
+    col_idx_ += advance;
   }
 
-  bool IsAlphanum(char chr) { return IsAlpha(chr) || IsDigit(chr); }
+  void PushToken(Token t, size_t advance) {
+    PushNothing(advance);
+    if (t.GetType() == TokenType::NEWLINE && (!result_.size() || result_.back().GetType() == TokenType::NEWLINE)) {
+      return;
+    }
+    result_.emplace_back(t);
+  }
+
+  void PushAnyToken(TokenType type, size_t advance) {
+    PushToken(token_spawner_->Spawn(type), advance);
+  }
+
+  void PushStringToken(std::string str, size_t advance) {
+    PushToken(token_spawner_->Spawn(TokenType::STRING, std::move(str)), advance);
+  }
+
+  void PushIdentifierToken(std::string name, size_t advance) {
+    PushToken(token_spawner_->Spawn(TokenType::IDENTIFIER, std::move(name)), advance);
+  }
+
+  void PushIntToken(int64_t val, size_t advance) {
+    PushToken(token_spawner_->Spawn(TokenType::INT_LITERAL, val), advance);
+  }
+
+  void PushFloatToken(double val, size_t advance) {
+    PushToken(token_spawner_->Spawn(TokenType::FLOAT_LITERAL, val), advance);
+  }
 
   template <size_t N, typename... Args>
   void ReportError(const char (&message)[N], Args... args) {

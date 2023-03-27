@@ -58,8 +58,6 @@ namespace ilang {
   _(UNINDENT)                        \
   _(NEWLINE)                         \
   _(END_OF_FILE)                     \
-  _(EMPTY_TOKEN)                     \
-  _(COMMENT)                         \
   _(BAD_TOKEN)
 
 enum class TokenType : uint8_t {

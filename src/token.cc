@@ -46,7 +46,6 @@ std::string TokenSpawner::ToString(Token token) const {
     case TokenType::FLOAT_LITERAL:
       ss << std::to_string(token.data_.fp_);
       break;
-    case TokenType::COMMENT:
     case TokenType::STRING:
     case TokenType::IDENTIFIER:
       ss << "\"" << pool_->strs_[token.data_.str_idx_] << "\"";

@@ -38,26 +38,26 @@ int ExecuteFile(const char* path) {
     return 1;
   }
 
-  // for (auto t: tokens) {
-  //   std::cout << token_spawner.ToString(t) << '\n';
-  // }
-
-  Parser parser(source, tokens, &es_pool);
-  std::vector<StmtId> statements = parser.Parse();
-
-  if (parser.HasError()) {
-    return 1;
+  for (auto t: tokens) {
+    std::cout << token_spawner.ToString(t) << '\n';
   }
 
-  // for (StmtId stmt : statements) {
-  //   std::cout << StmtToString(stmt, es_pool);
+  // Parser parser(source, tokens, &es_pool);
+  // std::vector<StmtId> statements = parser.Parse();
+
+  // if (parser.HasError()) {
+  //   return 1;
   // }
 
-  Resolver resolver(es_pool);
-  resolver.ResolveStmts(statements);
+  // // for (StmtId stmt : statements) {
+  // //   std::cout << StmtToString(stmt, es_pool);
+  // // }
 
-  Interpreter interpreter(es_pool, resolver);
-  interpreter.Interpret(statements);
+  // Resolver resolver(es_pool);
+  // resolver.ResolveStmts(statements);
+
+  // Interpreter interpreter(es_pool, resolver);
+  // interpreter.Interpret(statements);
 
   return 0;
 }
