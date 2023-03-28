@@ -14,14 +14,34 @@ namespace ilang {
 
 class Resolver {
  public:
-  Resolver(const ExprStmtPool& pool) : pool_(pool) {
-    PushCtx();
-    Define("print");
-  }
+  struct FrameInfo {
+    uint16_t frame_size;
+  };
 
-  int32_t GetDepth(ResolveId id) const { return resolve_[id]; }
+  struct VariableLocation {
+    enum Location: uint8_t {
+      NOT_FOUND,
+      LOCAL,
+      GLOBAL,
+    };
+
+    uint16_t idx;
+    Location location;
+  };
+
+  Resolver(const ExprStmtPool& pool) : pool_(pool) {}
+
+  FrameInfo GetFrameInfo(FrameInfoId id) const { return frame_infos_[id]; }
+  VariableLocation GetVariableLocation(ResolveId id) const { return resolve_[id]; }
 
   void ResolveStmts(const std::vector<StmtId>& stmts) {
+    PushCtx();
+    StrId id = pool_.FindStrId("print");
+    if (id == -1) {
+      throw "print id not found";
+    }
+    PushVariable(id);
+
     for (StmtId id : stmts) {
       ResolveStmt(id);
     }
@@ -49,7 +69,6 @@ class Resolver {
       }
       case Stmt::DEF: {
         DefStmt s = stmt.def_;
-        Define(s.name_);
         ResolveFunction(s);
         break;
       }
@@ -87,14 +106,20 @@ class Resolver {
   }
 
   void ResolveFunction(DefStmt s) {
+    PushVariable(s.name_);
     PushCtx();
     if (s.params_ != -1) {
       const StrBlock& block = pool_.str_blocks_[s.params_];
       for (StrId id : block) {
-        Define(id);
+        PushVariable(id);
       }
     }
     ResolveStmtBlock(s.body_);
+
+    uint16_t frame_size = contexts_.back().size();
+    SetFrameInfo(s.frame_info_, frame_size);
+    std::cerr << "Resolved function " << pool_.strs_[s.name_] << ":\n"
+              << "\tStack frame size: " << frame_size << "\n";
     PopCtx();
   }
 
@@ -167,26 +192,23 @@ class Resolver {
       }
       case Expr::ASSIGN: {
         AssignExpr e = expr.assign_;
+        VariableLocation loc = FindVariableLocation(e.name_);
+        if (loc.location == VariableLocation::NOT_FOUND) {
+          loc.location = VariableLocation::LOCAL;
+          loc.idx = PushVariable(e.name_);
+        }
+        Resolve(e.id_, loc);
+        
         ResolveExpr(e.value_);
-        const std::string& name = pool_.strs_[e.name_];
-        // int32_t depth = FindDepth(name);
-        // if (depth < 0) {
-        //   Define(name);
-        //   depth = 0;
-        // }
-        // Resolve(expr.assign_.id_, depth, name);
-        Define(name);
-        Resolve(expr.assign_.id_, 0, name);
         break;
       }
       case Expr::VARIABLE: {
         VariableExpr e = expr.variable_;
-        const std::string& name = pool_.strs_[e.name_];
-        int32_t depth = FindDepth(name);
-        if (depth < 0) {
-          throw std::runtime_error("Undefined variable " + name);
+        VariableLocation loc = FindVariableLocation(e.name_);
+        if (loc.location == VariableLocation::NOT_FOUND) {
+          throw std::runtime_error("Undefined variable " + pool_.strs_[e.name_]);
         }
-        Resolve(expr.variable_.id_, depth, name);
+        Resolve(expr.variable_.id_, loc);
         break;
       }
       case Expr::CALL: {
@@ -198,28 +220,63 @@ class Resolver {
     }
   }
 
-  void Resolve(ResolveId id, int32_t depth, const std::string& name) {
-    if (resolve_.size() < size_t(id + 1)) {
-      resolve_.resize(id + 1);
-    }
-    resolve_[id] = depth;
+  void Resolve(ResolveId id, VariableLocation::Location location, uint16_t idx) {
+    Resolve(id, VariableLocation{.idx = idx, .location = location});
   }
 
-  int32_t FindDepth(StrId id) { return FindDepth(pool_.strs_[id]); }
-  int32_t FindDepth(const std::string& str) {
-    int32_t depth = 0;
-    for (auto it = contexts_.rbegin(); it < contexts_.rend(); ++it) {
-      if (it->contains(str)) {
-        return depth;
+  void Resolve(ResolveId id, VariableLocation vl) {
+    size_t required_size = id + 1;
+    if (resolve_.size() < required_size) {
+      resolve_.resize(required_size);
+    }
+    resolve_[id] = vl;
+  }
+
+  void SetFrameInfo(FrameInfoId id, uint16_t size) {
+    size_t required_size = id + 1;
+    if (frame_infos_.size() < required_size) {
+      frame_infos_.resize(required_size);
+    }
+    frame_infos_[id] = {size};
+  }
+
+  uint16_t FindVariableIdx(StrId name, const std::vector<StrId>& ctx) {
+    for (size_t i = 0; i < ctx.size(); i++)
+    {
+      if (name == ctx[i]) {
+        return i;
       }
-      ++depth;
     }
     return -1;
   }
 
-  void Define(StrId id) { Define(pool_.strs_[id]); }
-  void Define(const std::string& name) {
-    contexts_.back().insert(name);
+  VariableLocation FindVariableLocation(StrId name) {
+    uint16_t idx; 
+    
+    const Context& local_context = contexts_.back();
+    idx = FindVariableIdx(name, local_context);
+    if (idx != uint16_t(-1)) {
+      return VariableLocation{.idx = idx, .location = VariableLocation::LOCAL};
+    }
+
+    const Context& global_context = contexts_[0];
+    idx = FindVariableIdx(name, global_context);
+    if (idx != uint16_t(-1)) {
+      return VariableLocation{.idx = idx, .location = VariableLocation::GLOBAL};
+    }
+    
+    return VariableLocation{.idx = uint16_t(-1), .location = VariableLocation::NOT_FOUND};
+  }
+
+  uint16_t PushVariable(StrId name) {
+    Context& context = contexts_.back();
+    uint16_t idx = FindVariableIdx(name, context);
+    if (idx != uint16_t(-1)) {
+      return;
+    }
+    uint16_t idx = context.size();
+    context.push_back(name);
+    return idx;
   }
 
   void PushCtx() {
@@ -230,8 +287,11 @@ class Resolver {
   }
 
  private:
-  std::vector<std::unordered_set<std::string>> contexts_;
-  std::vector<int32_t> resolve_;
+  using Context = std::vector<StrId>;
+
+  std::vector<Context> contexts_;
+  std::vector<VariableLocation> resolve_;
+  std::vector<FrameInfo> frame_infos_;
   const ExprStmtPool& pool_;
 };
 

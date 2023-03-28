@@ -13,6 +13,7 @@ struct DefStmt {
   StrId name_;
   StrBlockId params_;
   StmtBlockId body_;
+  FrameInfoId frame_info_;
 };
 
 struct ClassStmt {

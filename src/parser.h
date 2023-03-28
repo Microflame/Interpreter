@@ -21,7 +21,8 @@ class Parser {
         cur_(0),
         log_(Logger::kDebug),
         error_(false),
-        resolve_id_(-1) {}
+        resolve_id_(-1),
+        frame_info_id_(-1) {}
 
   std::vector<StmtId> Parse() {
     std::vector<StmtId> statements;
@@ -49,6 +50,7 @@ class Parser {
   Logger log_;
   bool error_;
   ResolveId resolve_id_;
+  FrameInfoId frame_info_id_;
 
   StmtId AddStmt(Stmt stmt) {
     // std::cout << "STMT: " << StmtTypeToString(stmt.type_) << std::endl;
@@ -60,9 +62,9 @@ class Parser {
     return AddStmt({stmt_data.TYPE, stmt_data});
   }
 
-  StmtId AddDefStmt(StrId name, StrBlockId params, StmtBlockId body) {
+  StmtId AddDefStmt(StrId name, StrBlockId params, StmtBlockId body, FrameInfoId frame_info) {
     Stmt stmt = {Stmt::DEF};
-    stmt.def_ = {.name_ = name, .params_ = params, .body_ = body};
+    stmt.def_ = {.name_ = name, .params_ = params, .body_ = body, .frame_info_ = frame_info};
     return AddStmt(stmt);
   }
 
@@ -215,7 +217,7 @@ class Parser {
 
     StmtBlockId body = ParseBlock();
 
-    return AddDefStmt(name, params_block, body);
+    return AddDefStmt(name, params_block, body, GetNextFrameInfoId());
   }
 
   // Ptr<stmt::Stmt> ParseClassDeclaration()
@@ -644,6 +646,7 @@ class Parser {
   }
 
   ResolveId GetNextResolveId() { return ++resolve_id_; }
+  FrameInfoId GetNextFrameInfoId() { return ++frame_info_id_; }
 };
 
 }  // namespace ilang

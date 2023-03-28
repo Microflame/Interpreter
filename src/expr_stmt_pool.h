@@ -14,6 +14,17 @@ using StrBlock = std::vector<StrId>;
 using TokenTypeBlock = std::vector<TokenType>;
 
 struct ExprStmtPool {
+  StrId FindStrId(const std::string& str) const {
+    for (size_t i = 0; i < strs_.size(); i++)
+    {
+      if (strs_[i] == str)
+      {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   StmtId PushStmt(Stmt stmt) {
     StmtId id = stmts_.size();
     stmts_.push_back(stmt);
@@ -28,12 +39,9 @@ struct ExprStmtPool {
   }
 
   StrId PushStr(std::string&& str) {
-    for (size_t i = 0; i < strs_.size(); i++)
-    {
-      if (strs_[i] == str)
-      {
-        return i;
-      }
+    StrId existing = FindStrId(str);
+    if (existing != -1) {
+      return existing;
     }
 
     StrId id = strs_.size();

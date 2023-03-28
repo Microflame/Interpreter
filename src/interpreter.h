@@ -12,16 +12,22 @@ namespace ilang {
 
 class StackFrame {
  public:
+  static constexpr size_t kMaxNumVariables = 2;
+
   StackFrame(StackFrameId prev) : kPrevious(prev) {}
 
   void Set(StrId name, Object obj) {
     Object* found = Find(name);
     if (found) {
       *found = obj;
-    } else {
-      names_.push_back(name);
-      variables_.push_back(obj);
+      return;
     }
+    if (num_variables_ == kMaxNumVariables) {
+      throw std::runtime_error("[StackFrame::Get] Stack frame is full");
+    }
+    names_[num_variables_] = name;
+    variables_[num_variables_] = obj;
+    num_variables_ += 1;
   }
 
   Object Get(StrId name) {
@@ -33,7 +39,7 @@ class StackFrame {
   }
 
   Object* Find(StrId name) {
-    for (size_t i = 0; i < names_.size(); i++) {
+    for (size_t i = 0; i < num_variables_; i++) {
       if (names_[i] == name) {
         return &variables_[i];
       }
@@ -45,8 +51,9 @@ class StackFrame {
   const StackFrameId kPrevious;
 
  private:
-  std::vector<StrId> names_;
-  std::vector<Object> variables_;
+  StrId names_[kMaxNumVariables];
+  Object variables_[kMaxNumVariables];
+  size_t num_variables_ = 0;
 };
 
 class Interpreter {
@@ -65,7 +72,11 @@ class Interpreter {
 
   void AddBuiltins() {
     StackFrame& frame = GetCurrentStackFrame();
-    frame.Set(pool_.PushStr("print"), MakeBuiltin(PrintBuiltin));
+    StrId id = pool_.FindStrId("print");
+    if (id == -1) {
+      throw "print id not found";
+    }
+    frame.Set(id, MakeBuiltin(PrintBuiltin));
   }
 
   void InterpretStmt(StmtId id) {
@@ -388,7 +399,7 @@ class Interpreter {
   }
 
  private:
-  ExprStmtPool& pool_;
+  const ExprStmtPool& pool_;
   const Resolver& resolver_;
   std::vector<StackFrame> stack_;
 

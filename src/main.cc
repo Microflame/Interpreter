@@ -29,6 +29,8 @@ int ExecuteFile(const char* path) {
   std::string source = ReadFile(path);
 
   ExprStmtPool es_pool;
+  es_pool.PushStr("print");
+
   Scanner scanner;
   TokenSpawner token_spawner(&es_pool);
   std::vector<Token> tokens = scanner.GetTokens(source, &token_spawner);
