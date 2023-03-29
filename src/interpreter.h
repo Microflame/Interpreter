@@ -10,59 +10,13 @@
 
 namespace ilang {
 
-class StackFrame {
- public:
-  static constexpr size_t kMaxNumVariables = 2;
-
-  StackFrame(StackFrameId prev) : kPrevious(prev) {}
-
-  void Set(StrId name, Object obj) {
-    Object* found = Find(name);
-    if (found) {
-      *found = obj;
-      return;
-    }
-    if (num_variables_ == kMaxNumVariables) {
-      throw std::runtime_error("[StackFrame::Get] Stack frame is full");
-    }
-    names_[num_variables_] = name;
-    variables_[num_variables_] = obj;
-    num_variables_ += 1;
-  }
-
-  Object Get(StrId name) {
-    Object* obj = Find(name);
-    if (!obj) {
-      throw std::runtime_error("[StackFrame::Get] Undefined variable " + name);
-    }
-    return *obj;
-  }
-
-  Object* Find(StrId name) {
-    for (size_t i = 0; i < num_variables_; i++) {
-      if (names_[i] == name) {
-        return &variables_[i];
-      }
-    }
-    return nullptr;
-  }
-
- public:
-  const StackFrameId kPrevious;
-
- private:
-  StrId names_[kMaxNumVariables];
-  Object variables_[kMaxNumVariables];
-  size_t num_variables_ = 0;
-};
-
 class Interpreter {
  public:
   Interpreter(ExprStmtPool& pool, const Resolver& resolver)
       : pool_(pool), resolver_(resolver) {}
 
   void Interpret(const std::vector<StmtId>& stmts) {
-    PushStackFrame();
+    PushStackFrame(resolver_.GetFrameInfo(0).frame_size);
     AddBuiltins();
     for (StmtId id : stmts) {
       InterpretStmt(id);
@@ -71,12 +25,11 @@ class Interpreter {
   }
 
   void AddBuiltins() {
-    StackFrame& frame = GetCurrentStackFrame();
     StrId id = pool_.FindStrId("print");
     if (id == -1) {
       throw "print id not found";
     }
-    frame.Set(id, MakeBuiltin(PrintBuiltin));
+    GetStackVar(0) = MakeBuiltin(PrintBuiltin); //TODO: Get this index from resolver
   }
 
   void InterpretStmt(StmtId id) {
@@ -124,8 +77,11 @@ class Interpreter {
   }
 
   void InterpretDef(DefStmt stmt) {
-    Object fn = MakeUserFn(GetCurrentStackFrameId(), stmt.params_, stmt.body_);
-    GetCurrentStackFrame().Set(stmt.name_, fn);
+    VariableIdx frame_size = resolver_.GetFrameInfo(stmt.frame_info_).frame_size;
+    Object fn = MakeUserFn(frame_size, stmt.params_, stmt.body_);
+
+    VariableIdx idx = resolver_.GetVariableLocation(stmt.id_).idx;
+    GetStackVar(idx) = fn;
   }
 
   void InterpretIf(IfStmt stmt) {
@@ -236,27 +192,26 @@ class Interpreter {
     if (callee.type_ == Object::BUILTIN_FUNCTION) {
       return callee.builtin_fn_(args, pool_);
     } else {
-      return EvalUserFn(callee, args);
+      return EvalUserFn(callee.user_fn_, args, callee.frame_size_);
     }
   }
 
-  Object EvalUserFn(Object callee, std::span<Object> args) {
-    PushStackFrame(callee.stack_frame_);
+  Object EvalUserFn(Object::UserFn callee, std::span<Object> args, VariableIdx frame_size) {
+    PushStackFrame(frame_size);
 
-    if (callee.user_fn_.args_block_ != -1) {
+    if (callee.args_block_ != -1) {
       const StrBlock& param_names =
-          pool_.str_blocks_[callee.user_fn_.args_block_];
+          pool_.str_blocks_[callee.args_block_];
       if (args.size() != param_names.size()) {
         throw std::runtime_error("[EvalUserFn] Wrong number of arguments");
       }
 
-      StackFrame& sf = GetCurrentStackFrame();
       for (size_t i = 0; i < args.size(); i++) {
-        sf.Set(param_names[i], args[i]);
+        GetStackVar(i) = args[i];
       }
     }
 
-    ExecuteStmts(callee.user_fn_.stmt_block_);
+    ExecuteStmts(callee.stmt_block_);
 
     PopStackFrame();
     has_return_ = false;
@@ -288,14 +243,25 @@ class Interpreter {
   }
 
   Object EvalVariable(VariableExpr expr) {
-    int32_t depth = resolver_.GetDepth(expr.id_);
-    return GetStackFrame(depth).Get(expr.name_);
+    VariableLocation loc = resolver_.GetVariableLocation(expr.id_);
+    if (loc.location == VariableLocation::LOCAL) {
+      return GetStackVar(loc.idx);
+    }
+    return GetGlobal(loc.idx);
   }
 
   Object EvalAssign(AssignExpr expr) {
     Object val = InterpretExpr(expr.value_);
-    int32_t depth = resolver_.GetDepth(expr.id_);
-    GetStackFrame(depth).Set(expr.name_, val);
+    VariableLocation loc = resolver_.GetVariableLocation(expr.id_);
+    Object* target = {};
+    if (loc.location == VariableLocation::LOCAL) {
+      target = &GetStackVar(loc.idx);
+    }
+    else
+    {
+      target = &GetGlobal(loc.idx);
+    }
+    *target = val;
     return val;
   }
 
@@ -382,26 +348,44 @@ class Interpreter {
     return left.Compare(right, op, pool_);
   }
 
-  StackFrameId GetCurrentStackFrameId() {
-    return (StackFrameId)stack_.size() - 1;
-  }
-  void PushStackFrame() { PushStackFrame(GetCurrentStackFrameId()); }
-  void PushStackFrame(StackFrameId prev) { stack_.emplace_back(prev); }
-  void PopStackFrame() { stack_.pop_back(); }
-  StackFrame& GetCurrentStackFrame() { return stack_.back(); }
-  StackFrame& GetStackFrame(int32_t depth) {
-    StackFrame* sf = &GetCurrentStackFrame();
-    while (depth) {
-      sf = &(stack_[sf->kPrevious]);
-      --depth;
+  void PushStackFrame(size_t size) {
+    size_t old_size = stack_sizes_.back();
+    size_t new_size = old_size + size;
+    while (stack_.size() < new_size) {
+      stack_.resize(stack_.size() ? stack_.size() * 2 : new_size);
     }
-    return *sf;
+
+    frame_ = std::span<Object>(&stack_[old_size], size);
+
+    stack_sizes_.push_back(old_size + size);
+  }
+
+  void PopStackFrame() {
+    if (stack_sizes_.size() <= 1) {
+      throw std::runtime_error("Stack is already empty");
+    }
+
+    stack_sizes_.pop_back();
+    size_t cur_size = stack_sizes_.back();
+    size_t prev_size = stack_sizes_[stack_sizes_.size() - 2];
+
+    frame_ = std::span<Object>(&stack_[prev_size], cur_size - prev_size);
+  }
+
+  Object& GetStackVar(VariableIdx idx) {
+    return frame_[idx];
+  }
+
+  Object& GetGlobal(VariableIdx idx) {
+    return stack_[idx];
   }
 
  private:
   const ExprStmtPool& pool_;
   const Resolver& resolver_;
-  std::vector<StackFrame> stack_;
+  std::vector<Object> stack_ = {};
+  std::vector<size_t> stack_sizes_ = {0, 0};
+  std::span<Object> frame_ = {};
 
   bool has_return_ = false;
   Object retval_ = MakeNone();

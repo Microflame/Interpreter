@@ -16,5 +16,6 @@ DEFINE_INDEX(TokenTypeBlockId, int32_t);
 DEFINE_INDEX(StmtId, int32_t);
 DEFINE_INDEX(StmtBlockId, int32_t);
 DEFINE_INDEX(StackFrameId, int32_t);
+DEFINE_INDEX(VariableIdx, int16_t);
 
 }  // namespace ilang

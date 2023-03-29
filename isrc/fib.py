@@ -1,6 +1,6 @@
 # python3 fib(40) runs in ~ 23 s.
 # pypy3 fib(40) runs in ~ 1.9 s.
-# Interp fib(40) runs in ~ 45 s.
+# Interp fib(40) runs in ~ 27 s.
 
 def fib(n):
     if n < 2:

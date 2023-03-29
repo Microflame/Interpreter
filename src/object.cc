@@ -197,38 +197,31 @@ bool Object::Compare(Object other, TokenType op,
 }
 
 Object MakeInt(int64_t val) {
-  // std::cerr << "MakeInt: " << val << '\n';
   return {.type_ = Object::INT, .int_ = val};
 }
 
 Object MakeFloat(double val) {
-  // std::cerr << "MakeFloat: " << val << '\n';
   return {.type_ = Object::FLOAT, .fp_ = val};
 }
 
 Object MakeString(StrId val) {
-  // std::cerr << "MakeString\n";
   return {.type_ = Object::STRING, .str_id_ = val};
 }
 
 Object MakeBool(bool val) {
-  // std::cerr << "MakeBool: " << val << '\n';
   return {.type_ = Object::BOOLEAN, .int_ = val};
 }
 
 Object MakeNone() {
-  // std::cerr << "MakeNone\n";
   return {Object::NONE};
 }
 
 Object MakeBuiltin(BuiltinFn fn) {
-  // std::cerr << "MakeBuiltin\n";
   return Object{.type_ = Object::BUILTIN_FUNCTION, .builtin_fn_ = fn};
 }
 
-Object MakeUserFn(StackFrameId prev_frame, StrBlockId args, StmtBlockId stmts) {
-  // std::cerr << "MakeUserFn\n";
-  Object res = {.type_ = Object::USER_FUNCTION, .stack_frame_ = prev_frame};
+Object MakeUserFn(VariableIdx frame_size, StrBlockId args, StmtBlockId stmts) {
+  Object res = {.type_ = Object::USER_FUNCTION, .frame_size_ = frame_size};
   res.user_fn_.args_block_ = args;
   res.user_fn_.stmt_block_ = stmts;
   return res;

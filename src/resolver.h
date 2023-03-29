@@ -12,22 +12,32 @@
 
 namespace ilang {
 
+struct FrameInfo {
+  VariableIdx frame_size;
+};
+
+struct VariableLocation {
+  enum Location: uint8_t {
+    NOT_FOUND,
+    LOCAL,
+    GLOBAL,
+  };
+
+  VariableIdx idx;
+  Location location;
+
+  static const char* LocationToString(Location loc) {
+    switch (loc) {
+      case NOT_FOUND: return "NOT_FOUND";
+      case LOCAL: return "LOCAL";
+      case GLOBAL: return "GLOBAL";
+    }
+    return "BAD_LOCATION";
+  }
+};
+
 class Resolver {
  public:
-  struct FrameInfo {
-    uint16_t frame_size;
-  };
-
-  struct VariableLocation {
-    enum Location: uint8_t {
-      NOT_FOUND,
-      LOCAL,
-      GLOBAL,
-    };
-
-    uint16_t idx;
-    Location location;
-  };
 
   Resolver(const ExprStmtPool& pool) : pool_(pool) {}
 
@@ -45,6 +55,9 @@ class Resolver {
     for (StmtId id : stmts) {
       ResolveStmt(id);
     }
+
+    VariableIdx frame_size = contexts_.back().size();
+    SetFrameInfo(0, frame_size);
   }
 
   void ResolveStmt(StmtId id) {
@@ -106,7 +119,9 @@ class Resolver {
   }
 
   void ResolveFunction(DefStmt s) {
-    PushVariable(s.name_);
+    VariableIdx idx = PushVariable(s.name_);
+    Resolve(s.id_, VariableLocation{.idx = idx, .location = VariableLocation::LOCAL});
+    // std::cerr << "RES/Def: " << pool_.strs_[s.name_] << ", " << VariableLocation::LocationToString(VariableLocation::LOCAL) << ", idx: " << idx << "\n";
     PushCtx();
     if (s.params_ != -1) {
       const StrBlock& block = pool_.str_blocks_[s.params_];
@@ -116,10 +131,8 @@ class Resolver {
     }
     ResolveStmtBlock(s.body_);
 
-    uint16_t frame_size = contexts_.back().size();
+    VariableIdx frame_size = contexts_.back().size();
     SetFrameInfo(s.frame_info_, frame_size);
-    std::cerr << "Resolved function " << pool_.strs_[s.name_] << ":\n"
-              << "\tStack frame size: " << frame_size << "\n";
     PopCtx();
   }
 
@@ -198,6 +211,7 @@ class Resolver {
           loc.idx = PushVariable(e.name_);
         }
         Resolve(e.id_, loc);
+        // std::cerr << "RES/Assign: " << pool_.strs_[e.name_] << ", " << VariableLocation::LocationToString(loc.location) << ", idx: " << loc.idx << "\n";
         
         ResolveExpr(e.value_);
         break;
@@ -209,6 +223,7 @@ class Resolver {
           throw std::runtime_error("Undefined variable " + pool_.strs_[e.name_]);
         }
         Resolve(expr.variable_.id_, loc);
+        // std::cerr << "RES/Variable: " << pool_.strs_[e.name_] << ", " << VariableLocation::LocationToString(loc.location) << ", idx: " << loc.idx << "\n";
         break;
       }
       case Expr::CALL: {
@@ -220,7 +235,7 @@ class Resolver {
     }
   }
 
-  void Resolve(ResolveId id, VariableLocation::Location location, uint16_t idx) {
+  void Resolve(ResolveId id, VariableLocation::Location location, VariableIdx idx) {
     Resolve(id, VariableLocation{.idx = idx, .location = location});
   }
 
@@ -232,7 +247,7 @@ class Resolver {
     resolve_[id] = vl;
   }
 
-  void SetFrameInfo(FrameInfoId id, uint16_t size) {
+  void SetFrameInfo(FrameInfoId id, VariableIdx size) {
     size_t required_size = id + 1;
     if (frame_infos_.size() < required_size) {
       frame_infos_.resize(required_size);
@@ -240,7 +255,7 @@ class Resolver {
     frame_infos_[id] = {size};
   }
 
-  uint16_t FindVariableIdx(StrId name, const std::vector<StrId>& ctx) {
+  VariableIdx FindVariableIdx(StrId name, const std::vector<StrId>& ctx) {
     for (size_t i = 0; i < ctx.size(); i++)
     {
       if (name == ctx[i]) {
@@ -251,30 +266,30 @@ class Resolver {
   }
 
   VariableLocation FindVariableLocation(StrId name) {
-    uint16_t idx; 
+    VariableIdx idx; 
     
     const Context& local_context = contexts_.back();
     idx = FindVariableIdx(name, local_context);
-    if (idx != uint16_t(-1)) {
+    if (idx != -1) {
       return VariableLocation{.idx = idx, .location = VariableLocation::LOCAL};
     }
 
     const Context& global_context = contexts_[0];
     idx = FindVariableIdx(name, global_context);
-    if (idx != uint16_t(-1)) {
+    if (idx != -1) {
       return VariableLocation{.idx = idx, .location = VariableLocation::GLOBAL};
     }
     
-    return VariableLocation{.idx = uint16_t(-1), .location = VariableLocation::NOT_FOUND};
+    return VariableLocation{.idx = -1, .location = VariableLocation::NOT_FOUND};
   }
 
-  uint16_t PushVariable(StrId name) {
+  VariableIdx PushVariable(StrId name) {
     Context& context = contexts_.back();
-    uint16_t idx = FindVariableIdx(name, context);
-    if (idx != uint16_t(-1)) {
-      return;
+    VariableIdx idx = FindVariableIdx(name, context);
+    if (idx != -1) {
+      return idx;
     }
-    uint16_t idx = context.size();
+    idx = context.size();
     context.push_back(name);
     return idx;
   }

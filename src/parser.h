@@ -22,7 +22,7 @@ class Parser {
         log_(Logger::kDebug),
         error_(false),
         resolve_id_(-1),
-        frame_info_id_(-1) {}
+        frame_info_id_(0) {}
 
   std::vector<StmtId> Parse() {
     std::vector<StmtId> statements;
@@ -53,7 +53,6 @@ class Parser {
   FrameInfoId frame_info_id_;
 
   StmtId AddStmt(Stmt stmt) {
-    // std::cout << "STMT: " << StmtTypeToString(stmt.type_) << std::endl;
     return expr_stmt_pool_.PushStmt(stmt);
   }
 
@@ -62,9 +61,9 @@ class Parser {
     return AddStmt({stmt_data.TYPE, stmt_data});
   }
 
-  StmtId AddDefStmt(StrId name, StrBlockId params, StmtBlockId body, FrameInfoId frame_info) {
+  StmtId AddDefStmt(StrId name, StrBlockId params, StmtBlockId body, FrameInfoId frame_info, ResolveId id) {
     Stmt stmt = {Stmt::DEF};
-    stmt.def_ = {.name_ = name, .params_ = params, .body_ = body, .frame_info_ = frame_info};
+    stmt.def_ = {.name_ = name, .params_ = params, .body_ = body, .frame_info_ = frame_info, .id_ = id};
     return AddStmt(stmt);
   }
 
@@ -101,13 +100,13 @@ class Parser {
   }
 
   ExprId AddExpr(Expr expr) {
-    // std::cout << "EXPR: " << ExprTypeToString(expr.type_) << '\n';
     return expr_stmt_pool_.PushExpr(expr);
   }
 
   ExprId AddAssignExpr(ResolveId id, ExprId value, StrId name) {
     Expr expr = {Expr::ASSIGN};
     expr.assign_ = {.id_ = id, .value_ = value, .name_ = name};
+    // std::cerr << "Assign: " << expr_stmt_pool_.strs_[name] << ", id: " << id << "\n";
     return AddExpr(expr);
   }
 
@@ -167,6 +166,7 @@ class Parser {
   ExprId AddVariableExpr(ResolveId id, StrId name) {
     Expr expr = {Expr::VARIABLE};
     expr.variable_ = {.id_ = id, .name_ = name};
+    // std::cerr << "Variable: " << expr_stmt_pool_.strs_[name] << ", id: " << id << "\n";
     return AddExpr(expr);
   }
 
@@ -217,7 +217,7 @@ class Parser {
 
     StmtBlockId body = ParseBlock();
 
-    return AddDefStmt(name, params_block, body, GetNextFrameInfoId());
+    return AddDefStmt(name, params_block, body, GetNextFrameInfoId(), GetNextResolveId());
   }
 
   // Ptr<stmt::Stmt> ParseClassDeclaration()
@@ -550,7 +550,6 @@ class Parser {
   }
 
   size_t Advance() {
-    // std::cout << GetTokenTypeName(kTokens[cur_ + 1].meta_.type_) << '\n';
     return ++cur_;
   }
 

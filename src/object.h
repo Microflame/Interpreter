@@ -31,8 +31,11 @@ struct Object {
     NONE
   } type_;
 
-  StackFrameId stack_frame_;
 
+  union {
+    VariableIdx frame_size_;
+  };
+  
   union {
     int64_t int_;
     double fp_;
@@ -75,6 +78,6 @@ Object MakeString(StrId val);
 Object MakeBool(bool val);
 Object MakeNone();
 Object MakeBuiltin(BuiltinFn fn);
-Object MakeUserFn(StackFrameId prev_frame, StrBlockId args, StmtBlockId stmts);
+Object MakeUserFn(VariableIdx frame_size, StrBlockId args, StmtBlockId stmts);
 
 }  // namespace ilang
