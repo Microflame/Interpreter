@@ -2,13 +2,13 @@
 
 #include <unordered_map>
 
-#include "builtin/print.h"
-#include "expr.h"
-#include "expr_stmt_pool.h"
-#include "resolver.h"
-#include "stmt.h"
+#include "slip/builtin/print.hpp"
+#include "slip/expr.hpp"
+#include "slip/expr_stmt_pool.hpp"
+#include "slip/resolver.hpp"
+#include "slip/stmt.hpp"
 
-namespace ilang {
+namespace slip {
 
 class Interpreter {
  public:
@@ -391,4 +391,4 @@ class Interpreter {
   Object retval_ = MakeNone();
 };
 
-}  // namespace ilang
+}  // namespace slip

@@ -1,12 +1,12 @@
-#include "es_to_string.h"
+#include "slip/util/es_to_string.hpp"
 
 #include <sstream>
 #include <vector>
 
-#include "expr_stmt_pool.h"
-#include "token.h"
+#include "slip/expr_stmt_pool.hpp"
+#include "slip/token.hpp"
 
-namespace ilang {
+namespace slip {
 
 std::string ExprBlockToString(ExprBlockId id, const ExprStmtPool& pool) {
   if (id < -1) return {};
@@ -237,4 +237,4 @@ std::string StmtToString(StmtId id, const ExprStmtPool& pool) {
   return StmtToString(pool.stmts_[id], pool);
 }
 
-}  // namespace ilang
+}  // namespace slip

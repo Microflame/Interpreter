@@ -2,9 +2,9 @@
 
 #include <iostream>
 
-#include "object.h"
+#include "slip/object.hpp"
 
-namespace ilang {
+namespace slip {
 
 Object PrintBuiltin(std::span<Object> args, const ExprStmtPool& pool) {
   const char* sep = "";
@@ -16,4 +16,4 @@ Object PrintBuiltin(std::span<Object> args, const ExprStmtPool& pool) {
   return MakeNone();
 }
 
-}  // namespace ilang
+}  // namespace slip

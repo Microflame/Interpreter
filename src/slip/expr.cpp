@@ -1,6 +1,6 @@
-#include "expr.h"
+#include "slip/expr.hpp"
 
-namespace ilang {
+namespace slip {
 
 const char* ExprTypeToString(Expr::Type type) {
   switch (type) {
@@ -34,4 +34,4 @@ const char* ExprTypeToString(Expr::Type type) {
   throw std::runtime_error("[ExprTypeToString] Bad type");
 }
 
-}  // namespace ilang
+}  // namespace slip

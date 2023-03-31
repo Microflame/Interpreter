@@ -2,9 +2,9 @@
 
 #include <span>
 
-#include "types.h"
+#include "slip/types.hpp"
 
-namespace ilang {
+namespace slip {
 
 struct ExprStmtPool;
 
@@ -80,4 +80,4 @@ Object MakeNone();
 Object MakeBuiltin(BuiltinFn fn);
 Object MakeUserFn(VariableIdx frame_size, StrBlockId args, StmtBlockId stmts);
 
-}  // namespace ilang
+}  // namespace slip

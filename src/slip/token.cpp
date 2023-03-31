@@ -1,6 +1,6 @@
-#include "token.h"
+#include "slip/token.hpp"
 
-namespace ilang {
+namespace slip {
 
 const char* Token::GetTypeName() const { return GetTokenTypeName(meta_.type_); }
 
@@ -70,4 +70,4 @@ StrId TokenSpawner::StoreString(std::string&& str) {
   return pool_->PushStr(std::move(str));
 }
 
-}  // namespace ilang
+}  // namespace slip

@@ -1,8 +1,8 @@
-#include "string_tools.h"
+#include "slip/util/string_tools.hpp"
 
 #include <cstring>
 
-namespace ilang {
+namespace slip {
 
 Position GetPosition(std::string_view view) {
   size_t line = 1;
@@ -18,4 +18,4 @@ Position GetPosition(std::string_view view) {
   return {line, view.size() - line_start_idx + 1};
 }
 
-}  // namespace ilang
+}  // namespace slip

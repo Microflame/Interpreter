@@ -24,12 +24,12 @@
     type idx_;                                                       \
   };                                                                 \
                                                                      \
-  } /* namespace ilang */                                            \
+  } /* namespace slip */                                            \
   namespace std {                                                    \
   template <>                                                        \
-  struct hash<ilang::name> {                                         \
-    size_t operator()(const ilang::name& x) const { return x.idx_; } \
+  struct hash<slip::name> {                                         \
+    size_t operator()(const slip::name& x) const { return x.idx_; } \
   };                                                                 \
   } /* namespace std */                                              \
-  namespace ilang {
+  namespace slip {
 #endif

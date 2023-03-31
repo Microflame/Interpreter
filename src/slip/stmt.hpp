@@ -1,8 +1,8 @@
 #pragma once
 
-#include "expr.h"
+#include "slip/expr.hpp"
 
-namespace ilang {
+namespace slip {
 
 struct ReturnStmt {
   // scanner::Token tok_;
@@ -68,4 +68,4 @@ struct Stmt {
 
 const char* StmtTypeToString(Stmt::Type type);
 
-}  // namespace ilang
+}  // namespace slip

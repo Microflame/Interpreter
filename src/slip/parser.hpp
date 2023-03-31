@@ -2,14 +2,14 @@
 
 #include <vector>
 
-#include "expr.h"
-#include "expr_stmt_pool.h"
-#include "stmt.h"
-#include "token.h"
-#include "util/logger.h"
-#include "util/string_tools.h"
+#include "slip/expr.hpp"
+#include "slip/expr_stmt_pool.hpp"
+#include "slip/stmt.hpp"
+#include "slip/token.hpp"
+#include "slip/util/logger.hpp"
+#include "slip/util/string_tools.hpp"
 
-namespace ilang {
+namespace slip {
 
 class Parser {
  public:
@@ -648,4 +648,4 @@ class Parser {
   FrameInfoId GetNextFrameInfoId() { return ++frame_info_id_; }
 };
 
-}  // namespace ilang
+}  // namespace slip

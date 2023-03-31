@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace ilang {
+namespace slip {
 
 class Logger {
  public:
@@ -34,4 +34,4 @@ class Logger {
   LogLevel log_level_;
 };
 
-}  // namespace ilang
+}  // namespace slip

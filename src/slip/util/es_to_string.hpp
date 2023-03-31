@@ -2,11 +2,11 @@
 
 #include <string>
 
-#include "expr.h"
-#include "stmt.h"
-#include "types.h"
+#include "slip/expr.hpp"
+#include "slip/stmt.hpp"
+#include "slip/types.hpp"
 
-namespace ilang {
+namespace slip {
 
 struct ExprStmtPool;
 
@@ -19,4 +19,4 @@ std::string StmtBlockToString(StmtBlockId id, const ExprStmtPool& pool);
 std::string StmtToString(Stmt stmt, const ExprStmtPool& pool);
 std::string StmtToString(StmtId id, const ExprStmtPool& pool);
 
-}  // namespace ilang
+}  // namespace slip

@@ -2,10 +2,10 @@
 
 #include <variant>
 
-#include "object.h"
-#include "types.h"
+#include "slip/object.hpp"
+#include "slip/types.hpp"
 
-namespace ilang {
+namespace slip {
 
 struct ThisExpr {
   // scanner::Token name_;
@@ -111,4 +111,4 @@ struct Expr {
 
 const char* ExprTypeToString(Expr::Type type);
 
-}  // namespace ilang
+}  // namespace slip

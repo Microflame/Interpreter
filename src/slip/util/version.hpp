@@ -1,6 +1,6 @@
 #pragma once
 
-namespace ilang {
+namespace slip {
 
 const char* GetBuildType() {
 #ifdef NDEBUG
@@ -10,4 +10,4 @@ const char* GetBuildType() {
 #endif
 }
 
-}  // namespace ilang
+}  // namespace slip

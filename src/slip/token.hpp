@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-#include "expr_stmt_pool.h"
-#include "token_type.h"
-#include "types.h"
+#include "slip/expr_stmt_pool.hpp"
+#include "slip/token_type.hpp"
+#include "slip/types.hpp"
 
-namespace ilang {
+namespace slip {
 
 struct TokenMeta {
   TokenType type_;
@@ -49,4 +49,4 @@ class TokenSpawner {
   TokenId cur_token_id_;
 };
 
-}  // namespace ilang
+}  // namespace slip

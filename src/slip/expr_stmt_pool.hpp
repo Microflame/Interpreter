@@ -2,11 +2,11 @@
 
 #include <vector>
 
-#include "expr.h"
-#include "stmt.h"
-#include "token_type.h"
+#include "slip/expr.hpp"
+#include "slip/stmt.hpp"
+#include "slip/token_type.hpp"
 
-namespace ilang {
+namespace slip {
 
 using StmtBlock = std::vector<Stmt>;
 using ExprBlock = std::vector<Expr>;
@@ -82,4 +82,4 @@ struct ExprStmtPool {
   std::vector<TokenTypeBlock> token_type_blocks_;
 };
 
-}  // namespace ilang
+}  // namespace slip

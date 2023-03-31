@@ -3,16 +3,16 @@
 #include <span>
 #include <streambuf>
 
-#include "expr.h"
-#include "interpreter.h"
-#include "parser.h"
-#include "resolver.h"
-#include "scanner.h"
-#include "stmt.h"
-#include "util/es_to_string.h"
-#include "util/version.h"
+#include "slip/expr.hpp"
+#include "slip/interpreter.hpp"
+#include "slip/parser.hpp"
+#include "slip/resolver.hpp"
+#include "slip/scanner.hpp"
+#include "slip/stmt.hpp"
+#include "slip/util/es_to_string.hpp"
+#include "slip/util/version.hpp"
 
-namespace ilang {
+namespace slip {
 
 std::string ReadFile(const char* path) {
   std::ifstream fin(path);
@@ -64,7 +64,7 @@ int ExecuteFile(const char* path) {
   return 0;
 }
 
-}  // namespace ilang
+}  // namespace slip
 
 int RunPrompt() { return 1; }
 
@@ -72,7 +72,7 @@ int main(int argc, const char* argv[]) {
   auto args = std::span(argv, size_t(argc));
   int retval = 0;
   if (args.size() > 1) {
-    retval = ilang::ExecuteFile(args[1]);
+    retval = slip::ExecuteFile(args[1]);
   } else {
     retval = RunPrompt();
   }

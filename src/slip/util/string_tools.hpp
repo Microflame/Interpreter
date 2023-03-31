@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-namespace ilang {
+namespace slip {
 
 struct Position {
   size_t line;
@@ -11,4 +11,4 @@ struct Position {
 
 Position GetPosition(std::string_view view);
 
-}  // namespace ilang
+}  // namespace slip

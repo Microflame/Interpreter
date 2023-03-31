@@ -1,9 +1,9 @@
 #pragma once
 
-#include "token_type.h"
-#include "util/strong_typedef.h"
+#include "slip/token_type.hpp"
+#include "slip/util/strong_typedef.hpp"
 
-namespace ilang {
+namespace slip {
 
 DEFINE_INDEX(TokenId, int32_t);
 DEFINE_INDEX(StrId, int32_t);
@@ -18,4 +18,4 @@ DEFINE_INDEX(StmtBlockId, int32_t);
 DEFINE_INDEX(StackFrameId, int32_t);
 DEFINE_INDEX(VariableIdx, int16_t);
 
-}  // namespace ilang
+}  // namespace slip

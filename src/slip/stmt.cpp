@@ -1,6 +1,6 @@
-#include "stmt.h"
+#include "slip/stmt.hpp"
 
-namespace ilang {
+namespace slip {
 
 const char* StmtTypeToString(Stmt::Type type) {
   switch (type) {
@@ -22,4 +22,4 @@ const char* StmtTypeToString(Stmt::Type type) {
   throw std::runtime_error("[StmtTypeToString] Bad type");
 }
 
-}  // namespace ilang
+}  // namespace slip

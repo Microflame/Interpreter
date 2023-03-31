@@ -4,11 +4,11 @@
 #include <sstream>
 #include <vector>
 
-#include "token.h"
-#include "util/logger.h"
-#include "util/string_tools.h"
+#include "slip/token.hpp"
+#include "slip/util/logger.hpp"
+#include "slip/util/string_tools.hpp"
 
-namespace ilang {
+namespace slip {
 
 static bool IsInRange(char chr, char lo, char hi) {
   return (chr >= lo) && (chr <= hi);
@@ -430,4 +430,4 @@ class Scanner {
   }
 };
 
-}  // namespace ilang
+}  // namespace slip

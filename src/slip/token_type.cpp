@@ -1,6 +1,6 @@
-#include "token_type.h"
+#include "slip/token_type.hpp"
 
-namespace ilang {
+namespace slip {
 
 const char* GetTokenTypeName(TokenType type) {
   switch (type) {
@@ -8,10 +8,10 @@ const char* GetTokenTypeName(TokenType type) {
   case TokenType::name: {           \
     return #name;                   \
   }
-    ILANG_FORALL_TOKEN_TYPES(INTERP_PUT_TOKEN_NAME)
+    SLIP_FORALL_TOKEN_TYPES(INTERP_PUT_TOKEN_NAME)
 #undef INTERP_PUT_TOKEN_NAME
   }
   throw std::runtime_error("invalid token type");
 }
 
-}  // namespace ilang
+}  // namespace slip

@@ -6,11 +6,11 @@
 #include <unordered_set>
 #include <vector>
 
-#include "expr.h"
-#include "expr_stmt_pool.h"
-#include "stmt.h"
+#include "slip/expr.hpp"
+#include "slip/expr_stmt_pool.hpp"
+#include "slip/stmt.hpp"
 
-namespace ilang {
+namespace slip {
 
 struct FrameInfo {
   VariableIdx frame_size;
@@ -310,4 +310,4 @@ class Resolver {
   const ExprStmtPool& pool_;
 };
 
-}  // namespace ilang
+}  // namespace slip

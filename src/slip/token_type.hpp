@@ -2,11 +2,11 @@
 
 #include <stdexcept>
 
-#include "types.h"
+#include "slip/types.hpp"
 
-namespace ilang {
+namespace slip {
 
-#define ILANG_FORALL_TOKEN_TYPES(_)  \
+#define SLIP_FORALL_TOKEN_TYPES(_)  \
   /* Single-character tokens. */     \
   _(LEFT_PAREN)                      \
   _(RIGHT_PAREN)                     \
@@ -62,10 +62,10 @@ namespace ilang {
 
 enum class TokenType : uint8_t {
 #define INTERP_PUT_WITH_COMMA(_) _,
-  ILANG_FORALL_TOKEN_TYPES(INTERP_PUT_WITH_COMMA)
+  SLIP_FORALL_TOKEN_TYPES(INTERP_PUT_WITH_COMMA)
 #undef INTERP_PUT_WITH_COMMA
 };
 
 const char* GetTokenTypeName(TokenType type);
 
-}  // namespace ilang
+}  // namespace slip

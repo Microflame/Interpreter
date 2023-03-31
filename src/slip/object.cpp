@@ -1,12 +1,12 @@
-#include "object.h"
+#include "slip/object.hpp"
 
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
-#include "expr_stmt_pool.h"
+#include "slip/expr_stmt_pool.hpp"
 
-namespace ilang {
+namespace slip {
 
 const char* Object::GetTypeName(Type type) {
   switch (type) {
@@ -227,4 +227,4 @@ Object MakeUserFn(VariableIdx frame_size, StrBlockId args, StmtBlockId stmts) {
   return res;
 }
 
-}  // namespace ilang
+}  // namespace slip
