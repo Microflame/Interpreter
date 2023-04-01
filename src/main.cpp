@@ -27,9 +27,7 @@ int ExecuteFile(const char* path) {
   try {
     tokens = tokenizer.Run(source, &token_spawner);
   } catch (InSourceError& e) {
-    SourceIntersection si = source.FindLine(e.range_.offset);
-    std::cerr << "Error:\n";
-    std::cerr << source.GetFileName() << ":" << si.row + 1 << ":" << si.column + 1 << ": " << e.message_ << "\n";
+    std::cerr << e.Render(source) << '\n';
     exit(1);
   } catch (std::exception& e) {
     std::cerr << "Error: " << e.what() << '\n';

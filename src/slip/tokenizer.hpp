@@ -1,13 +1,10 @@
 #pragma once
 
-#include <cstring>
-#include <sstream>
 #include <vector>
 #include <unordered_map>
 
 #include "slip/token.hpp"
 #include "slip/util/logger.hpp"
-#include "slip/util/string_tools.hpp"
 
 namespace slip {
 

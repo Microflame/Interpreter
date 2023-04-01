@@ -46,10 +46,11 @@ private:
 
 class InSourceError: public std::exception {
 public:
-  InSourceError(SourceRange range, std::string message) :
-    range_(range),
-    message_(std::move(message))
-  {}
+  InSourceError(SourceRange range, std::string message);
+
+  const char* what() const noexcept override;
+
+  std::string Render(const Source& source) const;
 
   SourceRange range_;
   std::string message_;

@@ -1,6 +1,7 @@
 #include "slip/source.hpp"
 
 #include <fstream>
+#include <sstream>
 
 namespace slip
 {
@@ -84,6 +85,25 @@ void Source::SetContent(const std::string& content) {
   content_.reserve(content.size() + NUM_PADDING_ZEROS);
   content_.assign(content);
   content_.append(NUM_PADDING_ZEROS, '\0');
+}
+
+
+InSourceError::InSourceError(SourceRange range, std::string message) :
+  range_(range),
+  message_(std::move(message))
+{}
+
+const char* InSourceError::what() const noexcept {
+  return message_.c_str();
+}
+
+std::string InSourceError::Render(const Source& source) const
+{
+  SourceIntersection si = source.FindLine(range_.offset);
+  std::stringstream ss;
+  ss << "Error:\n";
+  ss << source.GetFileName() << ":" << si.row + 1 << ":" << si.column + 1 << ": " << message_;
+  return ss.str();
 }
 
 } // namespace slip
