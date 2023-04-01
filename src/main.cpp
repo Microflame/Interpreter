@@ -7,59 +7,55 @@
 #include "slip/interpreter.hpp"
 #include "slip/parser.hpp"
 #include "slip/resolver.hpp"
-#include "slip/scanner.hpp"
+#include "slip/source.hpp"
 #include "slip/stmt.hpp"
+#include "slip/tokenizer.hpp"
 #include "slip/util/es_to_string.hpp"
 #include "slip/util/version.hpp"
 
 namespace slip {
 
-std::string ReadFile(const char* path) {
-  std::ifstream fin(path);
-  if (!fin.is_open()) {
-    std::cerr << "Can not open " << path << "\n";
-  }
-
-  std::string source((std::istreambuf_iterator<char>(fin)),
-                     std::istreambuf_iterator<char>());
-  return source;
-}
-
 int ExecuteFile(const char* path) {
-  std::string source = ReadFile(path);
+  Source source = Source::LoadFromFile(path);
 
   ExprStmtPool es_pool;
   es_pool.PushStr("print");
 
-  Scanner scanner;
   TokenSpawner token_spawner(&es_pool);
-  std::vector<Token> tokens = scanner.GetTokens(source, &token_spawner);
-
-  if (scanner.HasError()) {
-    std::cerr << "Scanner error\n";
-    return 1;
+  Tokenizer tokenizer;
+  std::vector<Token> tokens;
+  try {
+    tokens = tokenizer.Run(source, &token_spawner);
+  } catch (InSourceError& e) {
+    SourceIntersection si = source.FindLine(e.range_.offset);
+    std::cerr << "Error:\n";
+    std::cerr << source.GetFileName() << ":" << si.row + 1 << ":" << si.column + 1 << ": " << e.message_ << "\n";
+    exit(1);
+  } catch (std::exception& e) {
+    std::cerr << "Error: " << e.what() << '\n';
+    exit(1);
   }
 
-  // for (auto t: tokens) {
-  //   std::cout << token_spawner.ToString(t) << '\n';
+  for (auto t: tokens) {
+    std::cout << token_spawner.ToString(t) << '\n';
+  }
+
+  // Parser parser(source, tokens, &es_pool);
+  // std::vector<StmtId> statements = parser.Parse();
+
+  // if (parser.HasError()) {
+  //   return 1;
   // }
-
-  Parser parser(source, tokens, &es_pool);
-  std::vector<StmtId> statements = parser.Parse();
-
-  if (parser.HasError()) {
-    return 1;
-  }
 
   // for (StmtId stmt : statements) {
   //   std::cout << StmtToString(stmt, es_pool);
   // }
 
-  Resolver resolver(es_pool);
-  resolver.ResolveStmts(statements);
+  // Resolver resolver(es_pool);
+  // resolver.ResolveStmts(statements);
 
-  Interpreter interpreter(es_pool, resolver);
-  interpreter.Interpret(statements);
+  // Interpreter interpreter(es_pool, resolver);
+  // interpreter.Interpret(statements);
 
   return 0;
 }
