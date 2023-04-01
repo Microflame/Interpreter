@@ -1,8 +1,10 @@
 #pragma once
 
 #include <span>
+#include <string>
 
-#include "slip/types.hpp"
+#include "slip/indexing.hpp"
+#include "slip/token_type.hpp"
 
 namespace slip {
 

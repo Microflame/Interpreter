@@ -4,7 +4,7 @@
 
 #include "slip/expr.hpp"
 #include "slip/stmt.hpp"
-#include "slip/types.hpp"
+#include "slip/indexing.hpp"
 
 namespace slip {
 

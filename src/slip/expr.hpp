@@ -3,7 +3,8 @@
 #include <variant>
 
 #include "slip/object.hpp"
-#include "slip/types.hpp"
+#include "slip/token_type.hpp"
+#include "slip/indexing.hpp"
 
 namespace slip {
 

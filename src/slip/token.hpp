@@ -6,7 +6,7 @@
 
 #include "slip/expr_stmt_pool.hpp"
 #include "slip/token_type.hpp"
-#include "slip/types.hpp"
+#include "slip/indexing.hpp"
 
 namespace slip {
 
