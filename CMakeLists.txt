@@ -10,3 +10,5 @@ find_package(benchmark REQUIRED)
 include_directories(src)
 
 add_subdirectory(src)
+
+add_subdirectory(third_party/fmt EXCLUDE_FROM_ALL)

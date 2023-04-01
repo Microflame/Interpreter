@@ -1,7 +1,8 @@
 #include "slip/source.hpp"
 
 #include <fstream>
-#include <sstream>
+
+#include <fmt/core.h>
 
 namespace slip
 {
@@ -100,10 +101,7 @@ const char* InSourceError::what() const noexcept {
 std::string InSourceError::Render(const Source& source) const
 {
   SourceIntersection si = source.FindLine(range_.offset);
-  std::stringstream ss;
-  ss << "Error:\n";
-  ss << source.GetFileName() << ":" << si.row + 1 << ":" << si.column + 1 << ": " << message_;
-  return ss.str();
+  return fmt::format("Error:\n{:s}:{:d}:{:d}: {:s}", source.GetFileName(), si.row + 1, si.column + 1, message_);
 }
 
 } // namespace slip

@@ -6,3 +6,4 @@ file(GLOB SOURCES
 )
 
 add_library(slip STATIC ${SOURCES})
+target_link_libraries(slip fmt::fmt)
