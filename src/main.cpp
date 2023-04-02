@@ -21,11 +21,10 @@ int ExecuteFile(const char* path) {
   ExprStmtPool es_pool;
   es_pool.PushStr("print");
 
-  TokenSpawner token_spawner(&es_pool);
   Tokenizer tokenizer;
   std::vector<Token> tokens;
   try {
-    tokens = tokenizer.Run(source, &token_spawner);
+    tokens = tokenizer.Run(source, &es_pool);
   } catch (InSourceError& e) {
     std::cerr << e.Render(source) << '\n';
     exit(1);
@@ -35,7 +34,7 @@ int ExecuteFile(const char* path) {
   }
 
   for (auto t: tokens) {
-    std::cout << token_spawner.ToString(t) << '\n';
+    std::cout << t.ToString(es_pool) << '\n';
   }
 
   // Parser parser(source, tokens, &es_pool);

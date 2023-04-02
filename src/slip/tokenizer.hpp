@@ -9,19 +9,20 @@
 namespace slip {
 
 class Source;
+class ExprStmtPool;
 
 class Tokenizer {
 public:
   Tokenizer();
 
-  std::vector<Token> Run(const Source& source, TokenSpawner* token_spawner);
+  std::vector<Token> Run(const Source& source, ExprStmtPool* pool_);
 
 private:
   const std::unordered_map<std::string, TokenType> keywords_;
   std::vector<Token> result_;
 
   Logger log_;
-  TokenSpawner* token_spawner_;
+  ExprStmtPool* pool_;
 
   const char* begin_;
   const char* cur_;
@@ -29,6 +30,7 @@ private:
   int col_idx_;
   int single_indent_length_;
   int current_indent_level_;
+  TokenId cur_token_id_;
 
   void Parse();
 

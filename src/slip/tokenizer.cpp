@@ -1,6 +1,7 @@
 #include "slip/tokenizer.hpp"
 
 #include "slip/source.hpp"
+#include "slip/expr_stmt_pool.hpp"
 
 namespace slip
 {
@@ -43,16 +44,19 @@ Tokenizer::Tokenizer() :
   }),
   log_(Logger::kWarning) {}
 
-std::vector<Token> Tokenizer::Run(const Source& source, TokenSpawner* token_spawner) {
-  token_spawner_ = token_spawner;
+std::vector<Token> Tokenizer::Run(const Source& source, ExprStmtPool* pool) {
+  result_ = {};
+
+  pool_ = pool;
+
   begin_ = source.Data();
   cur_ = source.Data();
   end_ = source.Data() + source.Size();
 
   col_idx_ = 0;
-  current_indent_level_ = 0;
   single_indent_length_ = 0;
-  result_ = {};
+  current_indent_level_ = 0;
+  cur_token_id_ = 0;
 
   log_(Logger::kDebug, "Scanner started.");
 
@@ -357,23 +361,58 @@ void Tokenizer::PushToken(Token t, size_t advance) {
 }
 
 void Tokenizer::PushAnyToken(TokenType type, size_t advance) {
-  PushToken(token_spawner_->Spawn(type), advance);
+  Token t = {
+    .meta_ = {
+      .type_ = type,
+      .id_ = cur_token_id_++
+    }
+  };
+  t.data_.int_ = 0;
+  PushToken(t, advance);
 }
 
 void Tokenizer::PushStringToken(std::string str, size_t advance) {
-  PushToken(token_spawner_->Spawn(TokenType::STRING, std::move(str)), advance);
+  Token t = {
+    .meta_ = {
+      .type_ = TokenType::STRING,
+      .id_ = cur_token_id_++
+    }
+  };
+  t.data_.str_idx_ = pool_->PushStr(std::move(str));
+  PushToken(t, advance);
 }
 
 void Tokenizer::PushIdentifierToken(std::string name, size_t advance) {
-  PushToken(token_spawner_->Spawn(TokenType::IDENTIFIER, std::move(name)), advance);
+  Token t = {
+    .meta_ = {
+      .type_ = TokenType::IDENTIFIER,
+      .id_ = cur_token_id_++
+    }
+  };
+  t.data_.str_idx_ = pool_->PushStr(std::move(name));
+  PushToken(t, advance);
 }
 
 void Tokenizer::PushIntToken(int64_t val, size_t advance) {
-  PushToken(token_spawner_->Spawn(TokenType::INT_LITERAL, val), advance);
+  Token t = {
+    .meta_ = {
+      .type_ = TokenType::INT_LITERAL,
+      .id_ = cur_token_id_++
+    }
+  };
+  t.data_.int_ = val;
+  PushToken(t, advance);
 }
 
 void Tokenizer::PushFloatToken(double val, size_t advance) {
-  PushToken(token_spawner_->Spawn(TokenType::FLOAT_LITERAL, val), advance);
+  Token t = {
+    .meta_ = {
+      .type_ = TokenType::FLOAT_LITERAL,
+      .id_ = cur_token_id_++
+    }
+  };
+  t.data_.fp_ = val;
+  PushToken(t, advance);
 }
 
 void Tokenizer::ThrowSourceError(std::string message) {

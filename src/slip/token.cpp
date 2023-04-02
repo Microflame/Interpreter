@@ -1,54 +1,30 @@
 #include "slip/token.hpp"
 
+#include <sstream>
+
 namespace slip {
 
 const char* Token::GetTypeName() const { return GetTokenTypeName(meta_.type_); }
 
 TokenType Token::GetType() const { return meta_.type_; }
 
-TokenSpawner::TokenSpawner(ExprStmtPool* pool)
-    : pool_(pool), cur_token_id_(0) {}
-
-Token TokenSpawner::Spawn(TokenType type, std::string&& str) {
-  Token t = {.meta_ = MakeTokenMeta(type)};
-  t.data_.str_idx_ = StoreString(std::move(str));
-  return t;
-}
-
-Token TokenSpawner::Spawn(TokenType type, int64_t num) {
-  Token t = {.meta_ = MakeTokenMeta(type)};
-  t.data_.int_ = num;
-  return t;
-}
-
-Token TokenSpawner::Spawn(TokenType type, double num) {
-  Token t = {.meta_ = MakeTokenMeta(type)};
-  t.data_.fp_ = num;
-  return t;
-}
-
-Token TokenSpawner::Spawn(TokenType type) {
-  Token t = {.meta_ = MakeTokenMeta(type)};
-  return t;
-}
-
-std::string TokenSpawner::ToString(Token token) const {
+std::string Token::ToString(const ExprStmtPool& pool) const {
   std::stringstream ss;
 
-  ss << token.GetTypeName();
+  ss << GetTypeName();
 
   ss << "(";
 
-  switch (token.meta_.type_) {
+  switch (meta_.type_) {
     case TokenType::INT_LITERAL:
-      ss << std::to_string(token.data_.int_);
+      ss << std::to_string(data_.int_);
       break;
     case TokenType::FLOAT_LITERAL:
-      ss << std::to_string(token.data_.fp_);
+      ss << std::to_string(data_.fp_);
       break;
     case TokenType::STRING:
     case TokenType::IDENTIFIER:
-      ss << "\"" << pool_->strs_[token.data_.str_idx_] << "\"";
+      ss << "\"" << pool.strs_[data_.str_idx_] << "\"";
       break;
     default:
       break;
@@ -56,18 +32,6 @@ std::string TokenSpawner::ToString(Token token) const {
 
   ss << ")";
   return ss.str();
-}
-
-const std::string& TokenSpawner::GetString(StrId id) const {
-  return pool_->strs_[id];
-}
-
-TokenMeta TokenSpawner::MakeTokenMeta(TokenType type) {
-  return {type, cur_token_id_++};
-}
-
-StrId TokenSpawner::StoreString(std::string&& str) {
-  return pool_->PushStr(std::move(str));
 }
 
 }  // namespace slip
