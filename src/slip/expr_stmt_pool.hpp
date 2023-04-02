@@ -15,10 +15,8 @@ using TokenTypeBlock = std::vector<TokenType>;
 
 struct ExprStmtPool {
   StrId FindStrId(const std::string& str) const {
-    for (size_t i = 0; i < strs_.size(); i++)
-    {
-      if (strs_[i] == str)
-      {
+    for (size_t i = 0; i < strs_.size(); i++) {
+      if (strs_[i] == str) {
         return i;
       }
     }

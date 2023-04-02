@@ -40,8 +40,7 @@ private:
 
   void FinishFile();
   bool TryGetIndentation();
-  bool TryGetIntToken();
-  bool TryGetFloatToken();
+  bool TryGetFloatOrIntToken();
   bool TryGetStringToken();
 
   void FinishLine();

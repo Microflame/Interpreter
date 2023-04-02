@@ -2,6 +2,7 @@
 
 #include "slip/source.hpp"
 #include "slip/expr_stmt_pool.hpp"
+#include "slip/util/math.hpp"
 
 namespace slip
 {
@@ -81,8 +82,7 @@ void Tokenizer::FinishFile() {
 
 void Tokenizer::Parse() {
   if (TryGetIndentation()) return;
-  if (TryGetIntToken()) return;
-  if (TryGetFloatToken()) return;
+  if (TryGetFloatOrIntToken()) return;
   if (TryGetStringToken()) return;
 
   std::string identifier(GetIdentifier());
@@ -198,42 +198,33 @@ bool Tokenizer::TryGetIndentation() {
   return true;
 }
 
-bool Tokenizer::TryGetIntToken() {
-  size_t i = 0;
-  int64_t value = 0;
-  while (IsDigit(cur_[i])) {
-    value = value * 10 + (cur_[i] - '0');
-    ++i;
-  }
-
-  if (!i) {
-    return false;
-  }
-
-  PushIntToken(value, i);
-  return true;
-}
-
-bool Tokenizer::TryGetFloatToken() {
+bool Tokenizer::TryGetFloatOrIntToken() {
   if (!IsDigit(cur_[0]) && cur_[0] != '.') {
     return false;
   }
   size_t i = 0;
   size_t whole_part_size = 0;
   size_t fractional_part_size = 0;
+  double whole_part = 0;
+  int32_t exponent = 0;
+  int32_t exp_sign = 1;
 
   // whole part
   while (IsDigit(cur_[whole_part_size])) {
+    whole_part = whole_part * 10 + (cur_[whole_part_size] - '0');
     ++whole_part_size;
   }
   i += whole_part_size;
 
+  bool has_dot = false;
   if (cur_[i] == '.') {
     ++i;
+    has_dot = true;
   }
 
   // fractional part
   while (IsDigit(cur_[i + fractional_part_size])) {
+    whole_part = whole_part * 10 + (cur_[i + fractional_part_size] - '0');
     ++fractional_part_size;
   }
   i += fractional_part_size;
@@ -242,23 +233,34 @@ bool Tokenizer::TryGetFloatToken() {
     return false;
   }
 
-  size_t until_exp = i;
-
-  if (cur_[i] == 'e' || cur_[i] == 'E') {
-    i += 1;
-    if (cur_[i] == '-' || cur_[i] == '+') {
-      i += 1;
+  if (cur_[i] != 'e' && cur_[i] != 'E') {
+    if (!has_dot) {
+      PushIntToken(whole_part, i);
+      return true;
     }
-    if (!IsDigit(cur_[i])) {
-      i = until_exp;
-    } else {
-      while (IsDigit(cur_[i])) {
-        ++i;
-      }
-    }
+    goto SUCCESS;
   }
 
-  double value = std::stod(std::string(cur_, cur_ + i));
+  i += 1; // consume 'e'
+
+  if (cur_[i] == '-' || cur_[i] == '+') {
+    exp_sign = cur_[i] == '-' ? -1 : 1;
+    i += 1;
+  }
+
+  if (!IsDigit(cur_[i])) {
+    ThrowSourceError("Invalid float literal");
+  }
+
+  while (IsDigit(cur_[i])) {
+    exponent = exponent * 10 + (cur_[i] - '0');
+    ++i;
+  }
+  exponent *= exp_sign;
+
+SUCCESS:
+  exponent -= fractional_part_size;
+  double value = whole_part * powi(10, exponent);
   PushFloatToken(value, i);
   return true;
 }
