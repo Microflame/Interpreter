@@ -10,85 +10,86 @@
 #include "slip/context.hpp"
 #include "slip/stmt.hpp"
 
+#include "slip/indexing.hpp"
+
 namespace slip {
 
-struct FrameInfo {
-  VariableIdx frame_size;
+struct ScopeInfo {
+  VariableIdx size;
 };
 
-struct VariableLocation {
-  enum Location: uint8_t {
-    NOT_FOUND,
-    LOCAL,
-    GLOBAL,
-  };
+enum class VarScope: uint8_t {
+  NOT_FOUND,
+  LOCAL,
+  GLOBAL,
+};
 
+struct VarLocation {
   VariableIdx idx;
-  Location location;
-
-  static const char* LocationToString(Location loc) {
-    switch (loc) {
-      case NOT_FOUND: return "NOT_FOUND";
-      case LOCAL: return "LOCAL";
-      case GLOBAL: return "GLOBAL";
-    }
-    return "BAD_LOCATION";
-  }
+  VarScope scope;
 };
+
+const char* ToString(VarScope scope) {
+  switch (scope) {
+    case VarScope::NOT_FOUND: return "NOT_FOUND";
+    case VarScope::LOCAL: return "LOCAL";
+    case VarScope::GLOBAL: return "GLOBAL";
+  }
+  return "BAD_SCOPE";
+}
 
 class Resolver {
- public:
-
+public:
   Resolver(const Context& ctx) : ctx_(ctx) {}
 
-  FrameInfo GetFrameInfo(FrameInfoId id) const { return frame_infos_[id]; }
-  VariableLocation GetVariableLocation(ResolveId id) const { return resolve_[id]; }
+  ScopeInfo GetScopeInfo(ScopeInfoId id) const { return resolved_scopes_[id]; }
+  VarLocation GetVarLocation(ResolveId id) const { return resolved_vars_[id]; }
 
   void ResolveStmts(const std::vector<StmtId>& stmts) {
-    PushCtx();
+    PushScope();
     StrId id = ctx_.FindStrId("print");
     if (id == -1) {
-      throw "print id not found";
+      throw std::runtime_error("print id not found");
     }
-    PushVariable(id);
+    PushVar(id);
 
     for (StmtId id : stmts) {
       ResolveStmt(id);
     }
 
-    VariableIdx frame_size = contexts_.back().size();
-    SetFrameInfo(0, frame_size);
+    if (scopes_.size() != 1) {
+      throw std::runtime_error("Wrong number of scopes in stack");
+    }
+
+    VariableIdx scope_size = LocalScope().size();
+    FinishScope(0, scope_size);
   }
+
+private:
+  using Scope = std::vector<StrId>;
+  const Context& ctx_;
+
+  std::vector<Scope> scopes_;
+  std::vector<VarLocation> resolved_vars_;
+  std::vector<ScopeInfo> resolved_scopes_;
 
   void ResolveStmt(StmtId id) {
     if (id < 0) return;
     ResolveStmt(ctx_.stmts_[id]);
   }
 
-  void ResolveStmtBlock(StmtBlockId id) {
-    if (id < 0) return;
-    const StmtBlock& block = ctx_.stmt_blocks_[id];
-    for (Stmt s : block) {
-      ResolveStmt(s);
-    }
-  }
-
   void ResolveStmt(Stmt stmt) {
     switch (stmt.type_) {
       case Stmt::RETURN: {
-        ReturnStmt s = stmt.return_;
-        ResolveExpr(s.value_);
+        ResolveExpr(stmt.return_.value_);
         break;
       }
       case Stmt::DEF: {
-        DefStmt s = stmt.def_;
-        ResolveFunction(s);
+        ResolveFunctionDef(stmt.def_);
         break;
       }
       case Stmt::CLASS: {
-        // ClassStmt s = stmt.class_;
-        // TODO
-        break;
+        throw std::runtime_error("Classes are not implemented yet");
       }
       case Stmt::IF: {
         IfStmt s = stmt.if_;
@@ -99,9 +100,7 @@ class Resolver {
       }
       case Stmt::BLOCK: {
         BlockStmt s = stmt.block_;
-        // PushCtx();
         ResolveStmtBlock(s.statements_);
-        // PopCtx();
         break;
       }
       case Stmt::EXPRESSION: {
@@ -118,22 +117,30 @@ class Resolver {
     }
   }
 
-  void ResolveFunction(DefStmt s) {
-    VariableIdx idx = PushVariable(s.name_);
-    Resolve(s.id_, VariableLocation{.idx = idx, .location = VariableLocation::LOCAL});
-    // std::cerr << "RES/Def: " << ctx_.strs_[s.name_] << ", " << VariableLocation::LocationToString(VariableLocation::LOCAL) << ", idx: " << idx << "\n";
-    PushCtx();
+  void ResolveStmtBlock(StmtBlockId id) {
+    if (id < 0)
+      return;
+    const StmtBlock& block = ctx_.stmt_blocks_[id];
+    for (Stmt s : block) {
+      ResolveStmt(s);
+    }
+  }
+
+  void ResolveFunctionDef(DefStmt s) {
+    VariableIdx idx = PushVar(s.name_);
+    Resolve(s.id_, VarLocation{.idx = idx, .scope = VarScope::LOCAL});
+    PushScope();
     if (s.params_ != -1) {
       const StrBlock& block = ctx_.str_blocks_[s.params_];
       for (StrId id : block) {
-        PushVariable(id);
+        PushVar(id);
       }
     }
     ResolveStmtBlock(s.body_);
 
-    VariableIdx frame_size = contexts_.back().size();
-    SetFrameInfo(s.frame_info_, frame_size);
-    PopCtx();
+    VariableIdx scope_size = LocalScope().size();
+    FinishScope(s.scope_info_, scope_size);
+    PopScope();
   }
 
   void ResolveExpr(ExprId id) {
@@ -205,25 +212,22 @@ class Resolver {
       }
       case Expr::ASSIGN: {
         AssignExpr e = expr.assign_;
-        VariableLocation loc = FindVariableLocation(e.name_);
-        if (loc.location == VariableLocation::NOT_FOUND) {
-          loc.location = VariableLocation::LOCAL;
-          loc.idx = PushVariable(e.name_);
+        VarLocation loc = FindVarLocation(e.name_);
+        if (loc.scope == VarScope::NOT_FOUND) {
+          loc.scope = VarScope::LOCAL;
+          loc.idx = PushVar(e.name_);
         }
-        Resolve(e.id_, loc);
-        // std::cerr << "RES/Assign: " << ctx_.strs_[e.name_] << ", " << VariableLocation::LocationToString(loc.location) << ", idx: " << loc.idx << "\n";
-        
+        Resolve(e.id_, loc);        
         ResolveExpr(e.value_);
         break;
       }
       case Expr::VARIABLE: {
         VariableExpr e = expr.variable_;
-        VariableLocation loc = FindVariableLocation(e.name_);
-        if (loc.location == VariableLocation::NOT_FOUND) {
+        VarLocation loc = FindVarLocation(e.name_);
+        if (loc.scope == VarScope::NOT_FOUND) {
           throw std::runtime_error("Undefined variable " + ctx_.GetStr(e.name_));
         }
         Resolve(expr.variable_.id_, loc);
-        // std::cerr << "RES/Variable: " << ctx_.strs_[e.name_] << ", " << VariableLocation::LocationToString(loc.location) << ", idx: " << loc.idx << "\n";
         break;
       }
       case Expr::CALL: {
@@ -235,79 +239,81 @@ class Resolver {
     }
   }
 
-  void Resolve(ResolveId id, VariableLocation::Location location, VariableIdx idx) {
-    Resolve(id, VariableLocation{.idx = idx, .location = location});
+  void Resolve(ResolveId id, VarScope scope, VariableIdx idx) {
+    Resolve(id, VarLocation{.idx = idx, .scope = scope});
   }
 
-  void Resolve(ResolveId id, VariableLocation vl) {
+  void Resolve(ResolveId id, VarLocation vl) {
     size_t required_size = id + 1;
-    if (resolve_.size() < required_size) {
-      resolve_.resize(required_size);
+    if (resolved_vars_.size() < required_size) {
+      resolved_vars_.resize(required_size);
     }
-    resolve_[id] = vl;
+    resolved_vars_[id] = vl;
   }
 
-  void SetFrameInfo(FrameInfoId id, VariableIdx size) {
+  void FinishScope(ScopeInfoId id, VariableIdx size) {
     size_t required_size = id + 1;
-    if (frame_infos_.size() < required_size) {
-      frame_infos_.resize(required_size);
+    if (resolved_scopes_.size() < required_size) {
+      resolved_scopes_.resize(required_size);
     }
-    frame_infos_[id] = {size};
+    resolved_scopes_[id] = {.size = size};
   }
 
-  VariableIdx FindVariableIdx(StrId name, const std::vector<StrId>& ctx) {
-    for (size_t i = 0; i < ctx.size(); i++)
+  VariableIdx FindVariableIdx(StrId name, const Scope& scope) {
+    for (size_t i = 0; i < scope.size(); i++)
     {
-      if (name == ctx[i]) {
+      if (name == scope[i]) {
         return i;
       }
     }
     return -1;
   }
 
-  VariableLocation FindVariableLocation(StrId name) {
-    VariableIdx idx; 
-    
-    const FrameContext& local_context = contexts_.back();
-    idx = FindVariableIdx(name, local_context);
+  VarLocation FindVarLocation(StrId name) {
+    VariableIdx idx;
+
+    idx = FindVariableIdx(name, LocalScope());
     if (idx != -1) {
-      return VariableLocation{.idx = idx, .location = VariableLocation::LOCAL};
+      return VarLocation{.idx = idx, .scope = VarScope::LOCAL};
     }
 
-    const FrameContext& global_context = contexts_[0];
-    idx = FindVariableIdx(name, global_context);
+    idx = FindVariableIdx(name, GlobalScope());
     if (idx != -1) {
-      return VariableLocation{.idx = idx, .location = VariableLocation::GLOBAL};
+      return VarLocation{.idx = idx, .scope = VarScope::GLOBAL};
     }
-    
-    return VariableLocation{.idx = -1, .location = VariableLocation::NOT_FOUND};
+
+    return VarLocation{.idx = -1, .scope = VarScope::NOT_FOUND};
   }
 
-  VariableIdx PushVariable(StrId name) {
-    FrameContext& context = contexts_.back();
-    VariableIdx idx = FindVariableIdx(name, context);
+  VariableIdx PushVar(StrId name) {
+    VariableIdx idx = FindVariableIdx(name, LocalScope());
     if (idx != -1) {
       return idx;
     }
-    idx = context.size();
-    context.push_back(name);
+
+    idx = LocalScope().size();
+    LocalScope().push_back(name);
     return idx;
   }
 
-  void PushCtx() {
-    contexts_.emplace_back();
-  }
-  void PopCtx() {
-    contexts_.pop_back();
+  Scope& LocalScope() {
+    return scopes_.back();
   }
 
- private:
-  using FrameContext = std::vector<StrId>;
+  Scope& GlobalScope() {
+    return scopes_[0];
+  }
 
-  std::vector<FrameContext> contexts_;
-  std::vector<VariableLocation> resolve_;
-  std::vector<FrameInfo> frame_infos_;
-  const Context& ctx_;
+  void PushScope() {
+    scopes_.emplace_back();
+  }
+
+  void PopScope() {
+    if (scopes_.size() < 2) {
+      throw std::runtime_error("Can not pop scope");
+    }
+    scopes_.pop_back();
+  }
 };
 
 }  // namespace slip

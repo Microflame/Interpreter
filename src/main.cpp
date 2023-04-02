@@ -40,10 +40,6 @@ int ExecuteFile(const char* path) {
   Parser parser(source, tokens, &ctx);
   std::vector<StmtId> statements = parser.Parse();
 
-  if (parser.HasError()) {
-    return 1;
-  }
-
   // for (StmtId stmt : statements) {
   //   std::cout << StmtToString(stmt, ctx);
   // }

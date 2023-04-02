@@ -16,7 +16,7 @@ class Interpreter {
       : ctx_(ctx), resolver_(resolver) {}
 
   void Interpret(const std::vector<StmtId>& stmts) {
-    PushStackFrame(resolver_.GetFrameInfo(0).frame_size);
+    PushStackFrame(resolver_.GetScopeInfo(0).size);
     AddBuiltins();
     for (StmtId id : stmts) {
       InterpretStmt(id);
@@ -77,10 +77,10 @@ class Interpreter {
   }
 
   void InterpretDef(DefStmt stmt) {
-    VariableIdx frame_size = resolver_.GetFrameInfo(stmt.frame_info_).frame_size;
+    VariableIdx frame_size = resolver_.GetScopeInfo(stmt.scope_info_).size;
     Object fn = MakeUserFn(frame_size, stmt.params_, stmt.body_);
 
-    VariableIdx idx = resolver_.GetVariableLocation(stmt.id_).idx;
+    VariableIdx idx = resolver_.GetVarLocation(stmt.id_).idx;
     GetStackVar(idx) = fn;
   }
 
@@ -243,8 +243,8 @@ class Interpreter {
   }
 
   Object EvalVariable(VariableExpr expr) {
-    VariableLocation loc = resolver_.GetVariableLocation(expr.id_);
-    if (loc.location == VariableLocation::LOCAL) {
+    VarLocation loc = resolver_.GetVarLocation(expr.id_);
+    if (loc.scope == VarScope::LOCAL) {
       return GetStackVar(loc.idx);
     }
     return GetGlobal(loc.idx);
@@ -252,9 +252,9 @@ class Interpreter {
 
   Object EvalAssign(AssignExpr expr) {
     Object val = InterpretExpr(expr.value_);
-    VariableLocation loc = resolver_.GetVariableLocation(expr.id_);
+    VarLocation loc = resolver_.GetVarLocation(expr.id_);
     Object* target = {};
-    if (loc.location == VariableLocation::LOCAL) {
+    if (loc.scope == VarScope::LOCAL) {
       target = &GetStackVar(loc.idx);
     }
     else

@@ -14,7 +14,7 @@ struct DefStmt {
   StrBlockId params_;
   StmtBlockId body_;
   // TODO: Extra 8 bytes per Stmt, fix
-  FrameInfoId frame_info_;
+  ScopeInfoId scope_info_;
   ResolveId id_;
 };
 
