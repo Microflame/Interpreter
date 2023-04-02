@@ -50,7 +50,6 @@ struct Object {
 
   const char* GetTypeName() const;
   Type GetType() const;
-
   void AsssertType(Type type) const;
   bool IsNumber() const;
   bool AsBool() const;

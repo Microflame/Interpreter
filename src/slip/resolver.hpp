@@ -220,7 +220,7 @@ class Resolver {
         VariableExpr e = expr.variable_;
         VariableLocation loc = FindVariableLocation(e.name_);
         if (loc.location == VariableLocation::NOT_FOUND) {
-          throw std::runtime_error("Undefined variable " + ctx_.strs_[e.name_]);
+          throw std::runtime_error("Undefined variable " + ctx_.GetStr(e.name_));
         }
         Resolve(expr.variable_.id_, loc);
         // std::cerr << "RES/Variable: " << ctx_.strs_[e.name_] << ", " << VariableLocation::LocationToString(loc.location) << ", idx: " << loc.idx << "\n";
@@ -268,13 +268,13 @@ class Resolver {
   VariableLocation FindVariableLocation(StrId name) {
     VariableIdx idx; 
     
-    const Context& local_context = contexts_.back();
+    const FrameContext& local_context = contexts_.back();
     idx = FindVariableIdx(name, local_context);
     if (idx != -1) {
       return VariableLocation{.idx = idx, .location = VariableLocation::LOCAL};
     }
 
-    const Context& global_context = contexts_[0];
+    const FrameContext& global_context = contexts_[0];
     idx = FindVariableIdx(name, global_context);
     if (idx != -1) {
       return VariableLocation{.idx = idx, .location = VariableLocation::GLOBAL};
@@ -284,7 +284,7 @@ class Resolver {
   }
 
   VariableIdx PushVariable(StrId name) {
-    Context& context = contexts_.back();
+    FrameContext& context = contexts_.back();
     VariableIdx idx = FindVariableIdx(name, context);
     if (idx != -1) {
       return idx;
@@ -302,9 +302,9 @@ class Resolver {
   }
 
  private:
-  using Context = std::vector<StrId>;
+  using FrameContext = std::vector<StrId>;
 
-  std::vector<Context> contexts_;
+  std::vector<FrameContext> contexts_;
   std::vector<VariableLocation> resolve_;
   std::vector<FrameInfo> frame_infos_;
   const Context& ctx_;

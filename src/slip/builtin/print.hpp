@@ -6,10 +6,10 @@
 
 namespace slip {
 
-Object PrintBuiltin(std::span<Object> args, const ExprStmtPool& pool) {
+Object PrintBuiltin(std::span<Object> args, const Context& ctx) {
   const char* sep = "";
   for (const Object& obj : args) {
-    std::cout << sep << obj.ToString(pool);
+    std::cout << sep << obj.ToString(ctx);
     sep = " ";
   }
   std::cout << std::endl;

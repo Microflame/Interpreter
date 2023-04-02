@@ -4,6 +4,7 @@
 
 #include "slip/expr.hpp"
 #include "slip/context.hpp"
+#include "slip/source.hpp"
 #include "slip/stmt.hpp"
 #include "slip/token.hpp"
 #include "slip/util/logger.hpp"
@@ -13,7 +14,7 @@ namespace slip {
 
 class Parser {
  public:
-  Parser(const std::string& source, const std::vector<Token>& tokens,
+  Parser(const Source& source, const std::vector<Token>& tokens,
          Context* ctx)
       : kSource(source),
         kTokens(tokens),
@@ -43,7 +44,7 @@ class Parser {
   bool HasError() { return error_; }
 
  private:
-  const std::string& kSource;
+  const Source& kSource;
   const std::vector<Token>& kTokens;
   Context& ctx_;
   size_t cur_;
@@ -200,7 +201,7 @@ class Parser {
     ConsumeToken(TokenType::LEFT_PAREN);
 
     if (GetCurrentTokenType() != TokenType::RIGHT_PAREN) {
-      params_block = ctx_.MakeNewStrBlock();
+      params_block = ctx_.AddStrBlock();
       StrId param_id = ConsumeToken(TokenType::IDENTIFIER).data_.str_idx_;
       ctx_.str_blocks_[params_block].push_back(param_id);
       while (GetCurrentTokenType() == TokenType::COMMA) {
@@ -312,7 +313,7 @@ class Parser {
   }
 
   StmtBlockId ParseBlock() {
-    StmtBlockId block_id = ctx_.MakeNewStmtBlock();
+    StmtBlockId block_id = ctx_.AddStmtBlock();
 
     while (GetCurrentTokenType() != TokenType::UNINDENT && Remaining()) {
       StmtId stmt_id = ParseDeclarationOrStatement();
@@ -395,8 +396,8 @@ class Parser {
     ExprId expr = ParseAddition();
 
     if (IsAtComparison() || IsAtEqualityCheck()) {
-      ExprBlockId comparables = ctx_.MakeNewExprBlock();
-      TokenTypeBlockId ops = ctx_.MakeNewTokenTypeBlock();
+      ExprBlockId comparables = ctx_.AddExprBlock();
+      TokenTypeBlockId ops = ctx_.AddTokenTypeBlock();
       Expr cmp = ctx_.exprs_[expr];
       ctx_.expr_blocks_[comparables].push_back(cmp);
       while (IsAtComparison() || IsAtEqualityCheck()) {
@@ -468,7 +469,7 @@ class Parser {
     ExprBlockId args = -1;
 
     if (GetCurrentTokenType() != TokenType::RIGHT_PAREN) {
-      args = ctx_.MakeNewExprBlock();
+      args = ctx_.AddExprBlock();
       ExprId expr_id = ParseExpr();
       Expr expr = ctx_.exprs_[expr_id];
       ctx_.expr_blocks_[args].push_back(expr);

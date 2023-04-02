@@ -33,26 +33,26 @@ int ExecuteFile(const char* path) {
     exit(1);
   }
 
-  for (auto t: tokens) {
-    std::cout << t.ToString(es_pool) << '\n';
+  // for (auto t: tokens) {
+  //   std::cout << t.ToString(ctx) << '\n';
+  // }
+
+  Parser parser(source, tokens, &ctx);
+  std::vector<StmtId> statements = parser.Parse();
+
+  if (parser.HasError()) {
+    return 1;
   }
 
-  // Parser parser(source, tokens, &es_pool);
-  // std::vector<StmtId> statements = parser.Parse();
-
-  // if (parser.HasError()) {
-  //   return 1;
-  // }
-
   // for (StmtId stmt : statements) {
-  //   std::cout << StmtToString(stmt, es_pool);
+  //   std::cout << StmtToString(stmt, ctx);
   // }
 
-  // Resolver resolver(es_pool);
-  // resolver.ResolveStmts(statements);
+  Resolver resolver(ctx);
+  resolver.ResolveStmts(statements);
 
-  // Interpreter interpreter(es_pool, resolver);
-  // interpreter.Interpret(statements);
+  Interpreter interpreter(ctx, resolver);
+  interpreter.Interpret(statements);
 
   return 0;
 }
