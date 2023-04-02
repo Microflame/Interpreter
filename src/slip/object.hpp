@@ -8,10 +8,10 @@
 
 namespace slip {
 
-struct ExprStmtPool;
+struct Context;
 
 struct Object;
-using BuiltinFn = Object (*)(std::span<Object>, const ExprStmtPool&);
+using BuiltinFn = Object (*)(std::span<Object>, const Context&);
 
 struct Object {
   struct UserFn {
@@ -56,7 +56,7 @@ struct Object {
   bool AsBool() const;
   double AsFloat() const;
 
-  std::string ToString(const ExprStmtPool& pool) const;
+  std::string ToString(const Context& ctx) const;
 
   Object Mult(Object other) const;
   Object MultInt(int64_t other) const;
@@ -71,7 +71,7 @@ struct Object {
   Object SubInt(int64_t other) const;
   Object SubFp(double other) const;
 
-  bool Compare(Object other, TokenType op, const ExprStmtPool& pool) const;
+  bool Compare(Object other, TokenType op, const Context& ctx) const;
 };
 
 Object MakeInt(int64_t val);

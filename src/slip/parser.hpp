@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "slip/expr.hpp"
-#include "slip/expr_stmt_pool.hpp"
+#include "slip/context.hpp"
 #include "slip/stmt.hpp"
 #include "slip/token.hpp"
 #include "slip/util/logger.hpp"
@@ -14,10 +14,10 @@ namespace slip {
 class Parser {
  public:
   Parser(const std::string& source, const std::vector<Token>& tokens,
-         ExprStmtPool* espool)
+         Context* ctx)
       : kSource(source),
         kTokens(tokens),
-        expr_stmt_pool_(*espool),
+        ctx_(*ctx),
         cur_(0),
         log_(Logger::kDebug),
         error_(false),
@@ -45,7 +45,7 @@ class Parser {
  private:
   const std::string& kSource;
   const std::vector<Token>& kTokens;
-  ExprStmtPool& expr_stmt_pool_;
+  Context& ctx_;
   size_t cur_;
   Logger log_;
   bool error_;
@@ -53,7 +53,7 @@ class Parser {
   FrameInfoId frame_info_id_;
 
   StmtId AddStmt(Stmt stmt) {
-    return expr_stmt_pool_.PushStmt(stmt);
+    return ctx_.PushStmt(stmt);
   }
 
   template <typename T>
@@ -100,13 +100,13 @@ class Parser {
   }
 
   ExprId AddExpr(Expr expr) {
-    return expr_stmt_pool_.PushExpr(expr);
+    return ctx_.PushExpr(expr);
   }
 
   ExprId AddAssignExpr(ResolveId id, ExprId value, StrId name) {
     Expr expr = {Expr::ASSIGN};
     expr.assign_ = {.id_ = id, .value_ = value, .name_ = name};
-    // std::cerr << "Assign: " << expr_stmt_pool_.strs_[name] << ", id: " << id << "\n";
+    // std::cerr << "Assign: " << ctx_.strs_[name] << ", id: " << id << "\n";
     return AddExpr(expr);
   }
 
@@ -166,7 +166,7 @@ class Parser {
   ExprId AddVariableExpr(ResolveId id, StrId name) {
     Expr expr = {Expr::VARIABLE};
     expr.variable_ = {.id_ = id, .name_ = name};
-    // std::cerr << "Variable: " << expr_stmt_pool_.strs_[name] << ", id: " << id << "\n";
+    // std::cerr << "Variable: " << ctx_.strs_[name] << ", id: " << id << "\n";
     return AddExpr(expr);
   }
 
@@ -200,13 +200,13 @@ class Parser {
     ConsumeToken(TokenType::LEFT_PAREN);
 
     if (GetCurrentTokenType() != TokenType::RIGHT_PAREN) {
-      params_block = expr_stmt_pool_.MakeNewStrBlock();
+      params_block = ctx_.MakeNewStrBlock();
       StrId param_id = ConsumeToken(TokenType::IDENTIFIER).data_.str_idx_;
-      expr_stmt_pool_.str_blocks_[params_block].push_back(param_id);
+      ctx_.str_blocks_[params_block].push_back(param_id);
       while (GetCurrentTokenType() == TokenType::COMMA) {
         Advance();
         param_id = ConsumeToken(TokenType::IDENTIFIER).data_.str_idx_;
-        expr_stmt_pool_.str_blocks_[params_block].push_back(param_id);
+        ctx_.str_blocks_[params_block].push_back(param_id);
       }
     }
 
@@ -312,12 +312,12 @@ class Parser {
   }
 
   StmtBlockId ParseBlock() {
-    StmtBlockId block_id = expr_stmt_pool_.MakeNewStmtBlock();
+    StmtBlockId block_id = ctx_.MakeNewStmtBlock();
 
     while (GetCurrentTokenType() != TokenType::UNINDENT && Remaining()) {
       StmtId stmt_id = ParseDeclarationOrStatement();
-      Stmt stmt = expr_stmt_pool_.stmts_[stmt_id];
-      expr_stmt_pool_.stmt_blocks_[block_id].push_back(stmt);
+      Stmt stmt = ctx_.stmts_[stmt_id];
+      ctx_.stmt_blocks_[block_id].push_back(stmt);
     }
 
     ConsumeToken(TokenType::UNINDENT);
@@ -350,7 +350,7 @@ class Parser {
     if (GetCurrentTokenType() == TokenType::EQUAL) {
       Advance();
       ExprId value = ParseAssign();
-      Expr lvalue = expr_stmt_pool_.exprs_[lvalue_id];
+      Expr lvalue = ctx_.exprs_[lvalue_id];
       Expr::Type lvalue_type = lvalue.type_;
 
       if (lvalue_type == Expr::VARIABLE) {
@@ -395,16 +395,16 @@ class Parser {
     ExprId expr = ParseAddition();
 
     if (IsAtComparison() || IsAtEqualityCheck()) {
-      ExprBlockId comparables = expr_stmt_pool_.MakeNewExprBlock();
-      TokenTypeBlockId ops = expr_stmt_pool_.MakeNewTokenTypeBlock();
-      Expr cmp = expr_stmt_pool_.exprs_[expr];
-      expr_stmt_pool_.expr_blocks_[comparables].push_back(cmp);
+      ExprBlockId comparables = ctx_.MakeNewExprBlock();
+      TokenTypeBlockId ops = ctx_.MakeNewTokenTypeBlock();
+      Expr cmp = ctx_.exprs_[expr];
+      ctx_.expr_blocks_[comparables].push_back(cmp);
       while (IsAtComparison() || IsAtEqualityCheck()) {
         Token op = Pop();
-        expr_stmt_pool_.token_type_blocks_[ops].push_back(op.meta_.type_);
+        ctx_.token_type_blocks_[ops].push_back(op.meta_.type_);
         ExprId right = ParseAddition();
-        cmp = expr_stmt_pool_.exprs_[right];
-        expr_stmt_pool_.expr_blocks_[comparables].push_back(cmp);
+        cmp = ctx_.exprs_[right];
+        ctx_.expr_blocks_[comparables].push_back(cmp);
       }
       return AddComparisonExpr(comparables, ops);
     }
@@ -468,15 +468,15 @@ class Parser {
     ExprBlockId args = -1;
 
     if (GetCurrentTokenType() != TokenType::RIGHT_PAREN) {
-      args = expr_stmt_pool_.MakeNewExprBlock();
+      args = ctx_.MakeNewExprBlock();
       ExprId expr_id = ParseExpr();
-      Expr expr = expr_stmt_pool_.exprs_[expr_id];
-      expr_stmt_pool_.expr_blocks_[args].push_back(expr);
+      Expr expr = ctx_.exprs_[expr_id];
+      ctx_.expr_blocks_[args].push_back(expr);
       while (GetCurrentTokenType() == TokenType::COMMA) {
         Advance();
         ExprId expr_id = ParseExpr();
-        Expr expr = expr_stmt_pool_.exprs_[expr_id];
-        expr_stmt_pool_.expr_blocks_[args].push_back(expr);
+        Expr expr = ctx_.exprs_[expr_id];
+        ctx_.expr_blocks_[args].push_back(expr);
       }
     }
 

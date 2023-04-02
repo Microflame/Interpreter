@@ -8,15 +8,15 @@
 
 namespace slip {
 
-struct ExprStmtPool;
+struct Context;
 
-std::string StrBlockToString(StrBlockId str_block, const ExprStmtPool& pool);
-std::string ExprBlockToString(ExprBlockId id, const ExprStmtPool& pool);
-std::string ExprToString(Expr expr, const ExprStmtPool& pool);
-std::string ExprToString(ExprId id, const ExprStmtPool& pool);
-std::string TokenStrToString(StrId id, const ExprStmtPool& pool);
-std::string StmtBlockToString(StmtBlockId id, const ExprStmtPool& pool);
-std::string StmtToString(Stmt stmt, const ExprStmtPool& pool);
-std::string StmtToString(StmtId id, const ExprStmtPool& pool);
+std::string StrBlockToString(StrBlockId str_block, const Context& ctx);
+std::string ExprBlockToString(ExprBlockId id, const Context& ctx);
+std::string ExprToString(Expr expr, const Context& ctx);
+std::string ExprToString(ExprId id, const Context& ctx);
+std::string TokenStrToString(StrId id, const Context& ctx);
+std::string StmtBlockToString(StmtBlockId id, const Context& ctx);
+std::string StmtToString(Stmt stmt, const Context& ctx);
+std::string StmtToString(StmtId id, const Context& ctx);
 
 }  // namespace slip

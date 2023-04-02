@@ -2,13 +2,12 @@
 
 #include <string>
 
-#include "slip/expr_stmt_pool.hpp"
 #include "slip/token_type.hpp"
 #include "slip/indexing.hpp"
 
 namespace slip {
 
-class ExprStmtPool;
+class Context;
 
 struct TokenMeta {
   TokenType type_;
@@ -27,7 +26,7 @@ struct Token {
 
   const char* GetTypeName() const;
   TokenType GetType() const;
-  std::string ToString(const ExprStmtPool& pool) const;
+  std::string ToString(const Context& ctx) const;
 };
 
 }  // namespace slip

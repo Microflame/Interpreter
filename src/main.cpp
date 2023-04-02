@@ -18,13 +18,13 @@ namespace slip {
 int ExecuteFile(const char* path) {
   Source source = Source::LoadFromFile(path);
 
-  ExprStmtPool es_pool;
-  es_pool.PushStr("print");
+  Context ctx;
+  ctx.RegisterStr("print");
 
   Tokenizer tokenizer;
   std::vector<Token> tokens;
   try {
-    tokens = tokenizer.Run(source, &es_pool);
+    tokens = tokenizer.Run(source, &ctx);
   } catch (InSourceError& e) {
     std::cerr << e.Render(source) << '\n';
     exit(1);

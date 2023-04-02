@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "slip/expr.hpp"
-#include "slip/expr_stmt_pool.hpp"
+#include "slip/context.hpp"
 #include "slip/stmt.hpp"
 
 namespace slip {
@@ -39,14 +39,14 @@ struct VariableLocation {
 class Resolver {
  public:
 
-  Resolver(const ExprStmtPool& pool) : pool_(pool) {}
+  Resolver(const Context& ctx) : ctx_(ctx) {}
 
   FrameInfo GetFrameInfo(FrameInfoId id) const { return frame_infos_[id]; }
   VariableLocation GetVariableLocation(ResolveId id) const { return resolve_[id]; }
 
   void ResolveStmts(const std::vector<StmtId>& stmts) {
     PushCtx();
-    StrId id = pool_.FindStrId("print");
+    StrId id = ctx_.FindStrId("print");
     if (id == -1) {
       throw "print id not found";
     }
@@ -62,12 +62,12 @@ class Resolver {
 
   void ResolveStmt(StmtId id) {
     if (id < 0) return;
-    ResolveStmt(pool_.stmts_[id]);
+    ResolveStmt(ctx_.stmts_[id]);
   }
 
   void ResolveStmtBlock(StmtBlockId id) {
     if (id < 0) return;
-    const StmtBlock& block = pool_.stmt_blocks_[id];
+    const StmtBlock& block = ctx_.stmt_blocks_[id];
     for (Stmt s : block) {
       ResolveStmt(s);
     }
@@ -121,10 +121,10 @@ class Resolver {
   void ResolveFunction(DefStmt s) {
     VariableIdx idx = PushVariable(s.name_);
     Resolve(s.id_, VariableLocation{.idx = idx, .location = VariableLocation::LOCAL});
-    // std::cerr << "RES/Def: " << pool_.strs_[s.name_] << ", " << VariableLocation::LocationToString(VariableLocation::LOCAL) << ", idx: " << idx << "\n";
+    // std::cerr << "RES/Def: " << ctx_.strs_[s.name_] << ", " << VariableLocation::LocationToString(VariableLocation::LOCAL) << ", idx: " << idx << "\n";
     PushCtx();
     if (s.params_ != -1) {
-      const StrBlock& block = pool_.str_blocks_[s.params_];
+      const StrBlock& block = ctx_.str_blocks_[s.params_];
       for (StrId id : block) {
         PushVariable(id);
       }
@@ -138,12 +138,12 @@ class Resolver {
 
   void ResolveExpr(ExprId id) {
     if (id < 0) return;
-    ResolveExpr(pool_.exprs_[id]);
+    ResolveExpr(ctx_.exprs_[id]);
   }
 
   void ResolveExprBlock(ExprBlockId id) {
     if (id < 0) return;
-    const ExprBlock& block = pool_.expr_blocks_[id];
+    const ExprBlock& block = ctx_.expr_blocks_[id];
     for (Expr e : block) {
       ResolveExpr(e);
     }
@@ -211,7 +211,7 @@ class Resolver {
           loc.idx = PushVariable(e.name_);
         }
         Resolve(e.id_, loc);
-        // std::cerr << "RES/Assign: " << pool_.strs_[e.name_] << ", " << VariableLocation::LocationToString(loc.location) << ", idx: " << loc.idx << "\n";
+        // std::cerr << "RES/Assign: " << ctx_.strs_[e.name_] << ", " << VariableLocation::LocationToString(loc.location) << ", idx: " << loc.idx << "\n";
         
         ResolveExpr(e.value_);
         break;
@@ -220,10 +220,10 @@ class Resolver {
         VariableExpr e = expr.variable_;
         VariableLocation loc = FindVariableLocation(e.name_);
         if (loc.location == VariableLocation::NOT_FOUND) {
-          throw std::runtime_error("Undefined variable " + pool_.strs_[e.name_]);
+          throw std::runtime_error("Undefined variable " + ctx_.strs_[e.name_]);
         }
         Resolve(expr.variable_.id_, loc);
-        // std::cerr << "RES/Variable: " << pool_.strs_[e.name_] << ", " << VariableLocation::LocationToString(loc.location) << ", idx: " << loc.idx << "\n";
+        // std::cerr << "RES/Variable: " << ctx_.strs_[e.name_] << ", " << VariableLocation::LocationToString(loc.location) << ", idx: " << loc.idx << "\n";
         break;
       }
       case Expr::CALL: {
@@ -307,7 +307,7 @@ class Resolver {
   std::vector<Context> contexts_;
   std::vector<VariableLocation> resolve_;
   std::vector<FrameInfo> frame_infos_;
-  const ExprStmtPool& pool_;
+  const Context& ctx_;
 };
 
 }  // namespace slip

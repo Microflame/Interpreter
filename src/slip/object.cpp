@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "slip/expr_stmt_pool.hpp"
+#include "slip/context.hpp"
 
 namespace slip {
 
@@ -62,7 +62,7 @@ double Object::AsFloat() const {
   return fp_;
 }
 
-std::string Object::ToString(const ExprStmtPool& pool) const {
+std::string Object::ToString(const Context& ctx) const {
   switch (type_) {
     case INT:
       return std::to_string(int_);
@@ -70,7 +70,7 @@ std::string Object::ToString(const ExprStmtPool& pool) const {
       return std::to_string(fp_);
     case STRING:
     case IDENTIFIER:
-      return pool.strs_[str_id_];
+      return ctx.GetStr(str_id_);
     case BOOLEAN:
       return int_ ? "True" : "False";
     case NONE:
@@ -180,10 +180,10 @@ bool DoCompare(T lvalue, U rvalue, TokenType op) {
 }
 
 bool Object::Compare(Object other, TokenType op,
-                     const ExprStmtPool& pool) const {
+                     const Context& ctx) const {
   if (type_ == Type::STRING && other.type_ == Type::STRING) {
-    const std::string& lvalue = pool.strs_[str_id_];
-    const std::string& rvalue = pool.strs_[other.str_id_];
+    const std::string& lvalue = ctx.GetStr(str_id_);
+    const std::string& rvalue = ctx.GetStr(other.str_id_);
     return DoCompare(lvalue, rvalue, op);
   }
   if (IsNumber() && other.IsNumber()) {

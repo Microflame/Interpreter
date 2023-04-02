@@ -1,7 +1,7 @@
 #include "slip/tokenizer.hpp"
 
 #include "slip/source.hpp"
-#include "slip/expr_stmt_pool.hpp"
+#include "slip/context.hpp"
 #include "slip/util/math.hpp"
 
 namespace slip
@@ -45,10 +45,10 @@ Tokenizer::Tokenizer() :
   }),
   log_(Logger::kWarning) {}
 
-std::vector<Token> Tokenizer::Run(const Source& source, ExprStmtPool* pool) {
+std::vector<Token> Tokenizer::Run(const Source& source, Context* ctx) {
   result_ = {};
 
-  pool_ = pool;
+  ctx_ = ctx;
 
   begin_ = source.Data();
   cur_ = source.Data();
@@ -380,7 +380,7 @@ void Tokenizer::PushStringToken(std::string str, size_t advance) {
       .id_ = cur_token_id_++
     }
   };
-  t.data_.str_idx_ = pool_->PushStr(std::move(str));
+  t.data_.str_idx_ = ctx_->RegisterStr(std::move(str));
   PushToken(t, advance);
 }
 
@@ -391,7 +391,7 @@ void Tokenizer::PushIdentifierToken(std::string name, size_t advance) {
       .id_ = cur_token_id_++
     }
   };
-  t.data_.str_idx_ = pool_->PushStr(std::move(name));
+  t.data_.str_idx_ = ctx_->RegisterStr(std::move(name));
   PushToken(t, advance);
 }
 

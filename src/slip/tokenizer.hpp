@@ -9,20 +9,20 @@
 namespace slip {
 
 class Source;
-class ExprStmtPool;
+class Context;
 
 class Tokenizer {
 public:
   Tokenizer();
 
-  std::vector<Token> Run(const Source& source, ExprStmtPool* pool_);
+  std::vector<Token> Run(const Source& source, Context* ctx);
 
 private:
   const std::unordered_map<std::string, TokenType> keywords_;
   std::vector<Token> result_;
 
   Logger log_;
-  ExprStmtPool* pool_;
+  Context* ctx_;
 
   const char* begin_;
   const char* cur_;

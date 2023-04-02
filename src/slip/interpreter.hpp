@@ -4,7 +4,7 @@
 
 #include "slip/builtin/print.hpp"
 #include "slip/expr.hpp"
-#include "slip/expr_stmt_pool.hpp"
+#include "slip/context.hpp"
 #include "slip/resolver.hpp"
 #include "slip/stmt.hpp"
 
@@ -12,8 +12,8 @@ namespace slip {
 
 class Interpreter {
  public:
-  Interpreter(ExprStmtPool& pool, const Resolver& resolver)
-      : pool_(pool), resolver_(resolver) {}
+  Interpreter(Context& ctx, const Resolver& resolver)
+      : ctx_(ctx), resolver_(resolver) {}
 
   void Interpret(const std::vector<StmtId>& stmts) {
     PushStackFrame(resolver_.GetFrameInfo(0).frame_size);
@@ -25,7 +25,7 @@ class Interpreter {
   }
 
   void AddBuiltins() {
-    StrId id = pool_.FindStrId("print");
+    StrId id = ctx_.FindStrId("print");
     if (id == -1) {
       throw "print id not found";
     }
@@ -34,7 +34,7 @@ class Interpreter {
 
   void InterpretStmt(StmtId id) {
     if (id == -1) return;
-    Stmt stmt = pool_.stmts_[id];
+    Stmt stmt = ctx_.stmts_[id];
     InterpretStmt(stmt);
   }
 
@@ -101,7 +101,7 @@ class Interpreter {
 
   void ExecuteStmts(StmtBlockId id) {
     if (id == -1) return;
-    ExecuteStmts(pool_.stmt_blocks_[id]);
+    ExecuteStmts(ctx_.stmt_blocks_[id]);
   }
 
   void ExecuteStmts(const StmtBlock& stmts) {
@@ -129,7 +129,7 @@ class Interpreter {
 
   Object InterpretExpr(ExprId id) {
     if (id == -1) [[unlikely]] return MakeNone();
-    return InterpretExpr(pool_.exprs_[id]);
+    return InterpretExpr(ctx_.exprs_[id]);
   }
 
   Object InterpretExpr(const Expr& expr) {
@@ -190,7 +190,7 @@ class Interpreter {
       EvalExprBlock(expr.args_, args);
     }
     if (callee.type_ == Object::BUILTIN_FUNCTION) {
-      return callee.builtin_fn_(args, pool_);
+      return callee.builtin_fn_(args, ctx_);
     } else {
       return EvalUserFn(callee.user_fn_, args, callee.frame_size_);
     }
@@ -201,7 +201,7 @@ class Interpreter {
 
     if (callee.args_block_ != -1) {
       const StrBlock& param_names =
-          pool_.str_blocks_[callee.args_block_];
+          ctx_.str_blocks_[callee.args_block_];
       if (args.size() != param_names.size()) {
         throw std::runtime_error("[EvalUserFn] Wrong number of arguments");
       }
@@ -221,12 +221,12 @@ class Interpreter {
   size_t GetExprBlockSize(ExprBlockId id)
   {
     if (id == -1) return 0;
-    return pool_.expr_blocks_[id].size();
+    return ctx_.expr_blocks_[id].size();
   }
 
   void EvalExprBlock(ExprBlockId id, std::span<Object> args_dest) {
     if (id == -1) return;
-    const ExprBlock& block = pool_.expr_blocks_[id];
+    const ExprBlock& block = ctx_.expr_blocks_[id];
     return EvalExprBlock(block, args_dest);
   }
 
@@ -329,7 +329,7 @@ class Interpreter {
 
     EvalExprBlock(expr.comparables_, comps);
 
-    const std::vector<TokenType>& ops = pool_.token_type_blocks_[expr.ops_];
+    const std::vector<TokenType>& ops = ctx_.token_type_blocks_[expr.ops_];
     if (comps.size() < 2) {
       throw std::runtime_error("[EvalComparison] Bad number of comparables.");
     }
@@ -345,7 +345,7 @@ class Interpreter {
   }
 
   bool DoCompare(Object left, Object right, TokenType op) {
-    return left.Compare(right, op, pool_);
+    return left.Compare(right, op, ctx_);
   }
 
   void PushStackFrame(size_t size) {
@@ -381,7 +381,7 @@ class Interpreter {
   }
 
  private:
-  const ExprStmtPool& pool_;
+  const Context& ctx_;
   const Resolver& resolver_;
   std::vector<Object> stack_ = {};
   std::vector<size_t> stack_sizes_ = {0, 0};
