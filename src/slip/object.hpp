@@ -54,24 +54,15 @@ struct Object {
   bool IsNumber() const;
   bool AsBool() const;
   double AsFloat() const;
-
   std::string ToString(const Context& ctx) const;
-
-  Object Mult(Object other) const;
-  Object MultInt(int64_t other) const;
-  Object MultFp(double other) const;
-  Object Div(Object other) const;
-  Object DivInt(int64_t other) const;
-  Object DivFp(double other) const;
-  Object Add(Object other) const;
-  Object AddInt(int64_t other) const;
-  Object AddFp(double other) const;
-  Object Sub(Object other) const;
-  Object SubInt(int64_t other) const;
-  Object SubFp(double other) const;
 
   bool Compare(Object other, TokenType op, const Context& ctx) const;
 };
+
+Object Add(const Object& first, const Object& second, const Context& ctx);
+Object Sub(const Object& first, const Object& second, const Context& ctx);
+Object Mul(const Object& first, const Object& second, const Context& ctx);
+Object Div(const Object& first, const Object& second, const Context& ctx);
 
 Object MakeInt(int64_t val);
 Object MakeFloat(double val);

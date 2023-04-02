@@ -59,7 +59,8 @@ bool Object::AsBool() const {
 
 double Object::AsFloat() const {
   if (type_ == Type::INT) return int_;
-  return fp_;
+  if (type_ == Type::FLOAT) return fp_;
+  throw std::runtime_error("[Object::AsFloat] Bad type");
 }
 
 std::string Object::ToString(const Context& ctx) const {
@@ -85,79 +86,6 @@ std::string Object::ToString(const Context& ctx) const {
   return "<INVALID_TYPE>";
 }
 
-Object Object::Mult(Object other) const {
-  if (other.type_ == Type::FLOAT) return MultFp(other.fp_);
-  if (other.type_ == Type::INT) return MultInt(other.int_);
-  throw std::runtime_error("[Mult] bad right value type.");
-}
-
-Object Object::MultInt(int64_t other) const {
-  if (type_ == Type::INT) return MakeInt(int_ * other);
-  if (type_ == Type::FLOAT) return MakeFloat(fp_ * other);
-  throw std::runtime_error("[MultInt] bad left value type.");
-}
-
-Object Object::MultFp(double other) const {
-  if (type_ == Type::FLOAT) return MakeFloat(fp_ * other);
-  if (type_ == Type::INT) return MakeFloat(int_ * other);
-  throw std::runtime_error("[MultFp] bad left value type.");
-}
-
-Object Object::Div(Object other) const {
-  if (other.type_ == Type::FLOAT) return DivFp(other.fp_);
-  if (other.type_ == Type::INT) return DivInt(other.int_);
-  throw std::runtime_error("[Div] bad right value type.");
-}
-
-Object Object::DivInt(int64_t other) const {
-  if (type_ == Type::INT)
-    return int_ % other ? MakeFloat((double)int_ / other)
-                        : MakeInt(int_ / other);
-  if (type_ == Type::FLOAT) return MakeFloat(fp_ / other);
-  throw std::runtime_error("[DivInt] bad left value type.");
-}
-
-Object Object::DivFp(double other) const {
-  if (type_ == Type::FLOAT) return MakeFloat(fp_ / other);
-  if (type_ == Type::INT) return MakeFloat(int_ / other);
-  throw std::runtime_error("[DivFp] bad left value type.");
-}
-
-Object Object::Add(Object other) const {
-  if (other.type_ == Type::FLOAT) return AddFp(other.fp_);
-  if (other.type_ == Type::INT) return AddInt(other.int_);
-  throw std::runtime_error("[Add] bad right value type.");
-}
-
-Object Object::AddInt(int64_t other) const {
-  if (type_ == Type::INT) return MakeInt(int_ + other);
-  if (type_ == Type::FLOAT) return MakeFloat(fp_ + other);
-  throw std::runtime_error("[AddInt] bad left value type.");
-}
-
-Object Object::AddFp(double other) const {
-  if (type_ == Type::FLOAT) return MakeFloat(fp_ + other);
-  if (type_ == Type::INT) return MakeFloat(int_ + other);
-  throw std::runtime_error("[AddFp] bad left value type.");
-}
-
-Object Object::Sub(Object other) const {
-  if (other.type_ == Type::FLOAT) return SubFp(other.fp_);
-  if (other.type_ == Type::INT) return SubInt(other.int_);
-  throw std::runtime_error("[Sub] bad right value type.");
-}
-
-Object Object::SubInt(int64_t other) const {
-  if (type_ == Type::INT) return MakeInt(int_ - other);
-  if (type_ == Type::FLOAT) return MakeFloat(fp_ - other);
-  throw std::runtime_error("[SubInt] bad left value type.");
-}
-
-Object Object::SubFp(double other) const {
-  if (type_ == Type::FLOAT) return MakeFloat(fp_ - other);
-  if (type_ == Type::INT) return MakeFloat(int_ - other);
-  throw std::runtime_error("[SubFp] bad left value type.");
-}
 
 template <typename T, typename U>
 bool DoCompare(T lvalue, U rvalue, TokenType op) {
@@ -195,6 +123,63 @@ bool Object::Compare(Object other, TokenType op,
   }
   throw std::runtime_error("[IsEqual] invalid values.");
 }
+
+static constexpr uint16_t MergeObjectTypes(Object::Type first, Object::Type second) {
+  return (uint16_t(first) << 8) | uint16_t(second);
+}
+
+Object Add(const Object& first, const Object& second, const Context& ctx) {
+  uint16_t types = MergeObjectTypes(first.GetType(), second.GetType());
+  switch (types) {
+    case MergeObjectTypes(Object::INT, Object::INT): return MakeInt(first.int_ + second.int_);
+    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeInt(first.fp_ + second.int_);
+    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeInt(first.int_ + second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeInt(first.fp_ + second.fp_);
+
+    default: throw std::runtime_error("Addition not supported by these types");
+  }
+}
+
+Object Sub(const Object& first, const Object& second, const Context& ctx) {
+  uint16_t types = MergeObjectTypes(first.GetType(), second.GetType());
+  switch (types) {
+    case MergeObjectTypes(Object::INT, Object::INT): return MakeInt(first.int_ - second.int_);
+    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeInt(first.fp_ - second.int_);
+    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeInt(first.int_ - second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeInt(first.fp_ - second.fp_);
+
+    default: throw std::runtime_error("Subtraction not supported by these types");
+  }
+}
+
+Object Mul(const Object& first, const Object& second, const Context& ctx) {
+  uint16_t types = MergeObjectTypes(first.GetType(), second.GetType());
+  switch (types) {
+    case MergeObjectTypes(Object::INT, Object::INT): return MakeInt(first.int_ * second.int_);
+    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeInt(first.fp_ * second.int_);
+    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeInt(first.int_ * second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeInt(first.fp_ * second.fp_);
+
+    default: throw std::runtime_error("Multiplication not supported by these types");
+  }
+}
+
+Object Div(const Object& first, const Object& second, const Context& ctx) {
+  uint16_t types = MergeObjectTypes(first.GetType(), second.GetType());
+  switch (types) {
+    case MergeObjectTypes(Object::INT, Object::INT): {
+      if (first.int_ % second.int_) return MakeFloat(double(first.int_) / second.int_);
+      return MakeInt(first.int_ / second.int_);
+    }
+
+    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeInt(first.fp_ / second.int_);
+    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeInt(first.int_ / second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeInt(first.fp_ / second.fp_);
+
+    default: throw std::runtime_error("Division not supported by these types");
+  }
+}
+
 
 Object MakeInt(int64_t val) {
   return {.type_ = Object::INT, .int_ = val};

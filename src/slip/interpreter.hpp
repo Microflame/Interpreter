@@ -278,7 +278,7 @@ class Interpreter {
     } else {
       throw std::runtime_error("[EvalUnary] Bad op");
     }
-    return obj.MultInt(sign);
+    return Mul(obj, MakeInt(sign), ctx_);
   }
 
   Object EvalLogical(LogicalExpr expr) {
@@ -310,13 +310,13 @@ class Interpreter {
     Object right = InterpretExpr(expr.right_);
     switch (expr.op_) {
       case TokenType::STAR:
-        return left.Mult(right);
+        return Mul(left, right, ctx_);
       case TokenType::SLASH:
-        return left.Div(right);
+        return Div(left, right, ctx_);
       case TokenType::PLUS:
-        return left.Add(right);
+        return Add(left, right, ctx_);
       case TokenType::MINUS:
-        return left.Sub(right);
+        return Sub(left, right, ctx_);
       default:
         throw std::runtime_error("[EvalBinary] Bad op!");
     }
