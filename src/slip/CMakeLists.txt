@@ -3,6 +3,7 @@ set(SOURCES
     expr.cpp
     object.cpp
     parser.cpp
+    resolver.cpp
     source.cpp
     stmt.cpp
     token_type.cpp
