@@ -1,5 +1,9 @@
 #include "slip/resolver.hpp"
 
+#include "slip/expr.hpp"
+#include "slip/context.hpp"
+#include "slip/stmt.hpp"
+
 namespace slip
 {
 

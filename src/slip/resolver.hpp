@@ -1,18 +1,16 @@
 #pragma once
 
-#include <iostream>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
-
-#include "slip/expr.hpp"
-#include "slip/context.hpp"
-#include "slip/stmt.hpp"
 
 #include "slip/indexing.hpp"
 
 namespace slip {
+
+class Context;
+
+struct Expr;
+struct Stmt;
+struct DefStmt;
 
 struct ScopeInfo {
   VariableIdx size;
