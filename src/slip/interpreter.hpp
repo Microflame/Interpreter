@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 
-#include "slip/builtin/print.hpp"
+#include "slip/builtin/functions.hpp"
 #include "slip/expr.hpp"
 #include "slip/context.hpp"
 #include "slip/resolver.hpp"
@@ -25,11 +25,10 @@ class Interpreter {
   }
 
   void AddBuiltins() {
-    StrId id = ctx_.FindStrId("print");
-    if (id == -1) {
-      throw "print id not found";
+    size_t i = 0;
+    for (const BuiltinFunction& fn: ctx_.builtin_functions_) {
+      GetStackVar(i++) = MakeBuiltin(fn.ptr); //TODO: Get this index from resolver
     }
-    GetStackVar(0) = MakeBuiltin(PrintBuiltin); //TODO: Get this index from resolver
   }
 
   void InterpretStmt(StmtId id) {

@@ -5,6 +5,7 @@
 #include <string>
 
 #include "slip/context.hpp"
+#include "slip/builtin/functions.hpp"
 
 namespace slip {
 
@@ -132,9 +133,9 @@ Object Add(const Object& first, const Object& second, const Context& ctx) {
   uint16_t types = MergeObjectTypes(first.GetType(), second.GetType());
   switch (types) {
     case MergeObjectTypes(Object::INT, Object::INT): return MakeInt(first.int_ + second.int_);
-    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeInt(first.fp_ + second.int_);
-    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeInt(first.int_ + second.fp_);
-    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeInt(first.fp_ + second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeFloat(first.fp_ + second.int_);
+    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeFloat(first.int_ + second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeFloat(first.fp_ + second.fp_);
 
     default: throw std::runtime_error("Addition not supported by these types");
   }
@@ -144,9 +145,9 @@ Object Sub(const Object& first, const Object& second, const Context& ctx) {
   uint16_t types = MergeObjectTypes(first.GetType(), second.GetType());
   switch (types) {
     case MergeObjectTypes(Object::INT, Object::INT): return MakeInt(first.int_ - second.int_);
-    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeInt(first.fp_ - second.int_);
-    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeInt(first.int_ - second.fp_);
-    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeInt(first.fp_ - second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeFloat(first.fp_ - second.int_);
+    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeFloat(first.int_ - second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeFloat(first.fp_ - second.fp_);
 
     default: throw std::runtime_error("Subtraction not supported by these types");
   }
@@ -156,9 +157,9 @@ Object Mul(const Object& first, const Object& second, const Context& ctx) {
   uint16_t types = MergeObjectTypes(first.GetType(), second.GetType());
   switch (types) {
     case MergeObjectTypes(Object::INT, Object::INT): return MakeInt(first.int_ * second.int_);
-    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeInt(first.fp_ * second.int_);
-    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeInt(first.int_ * second.fp_);
-    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeInt(first.fp_ * second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeFloat(first.fp_ * second.int_);
+    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeFloat(first.int_ * second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeFloat(first.fp_ * second.fp_);
 
     default: throw std::runtime_error("Multiplication not supported by these types");
   }
@@ -172,9 +173,9 @@ Object Div(const Object& first, const Object& second, const Context& ctx) {
       return MakeInt(first.int_ / second.int_);
     }
 
-    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeInt(first.fp_ / second.int_);
-    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeInt(first.int_ / second.fp_);
-    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeInt(first.fp_ / second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::INT): return MakeFloat(first.fp_ / second.int_);
+    case MergeObjectTypes(Object::INT, Object::FLOAT): return MakeFloat(first.int_ / second.fp_);
+    case MergeObjectTypes(Object::FLOAT, Object::FLOAT): return MakeFloat(first.fp_ / second.fp_);
 
     default: throw std::runtime_error("Division not supported by these types");
   }
@@ -201,7 +202,7 @@ Object MakeNone() {
   return {Object::NONE};
 }
 
-Object MakeBuiltin(BuiltinFn fn) {
+Object MakeBuiltin(BuiltinFnPtr fn) {
   return Object{.type_ = Object::BUILTIN_FUNCTION, .builtin_fn_ = fn};
 }
 

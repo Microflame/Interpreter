@@ -10,6 +10,7 @@
 #include "slip/source.hpp"
 #include "slip/stmt.hpp"
 #include "slip/tokenizer.hpp"
+#include "slip/builtin/functions.hpp"
 #include "slip/util/es_to_string.hpp"
 #include "slip/util/version.hpp"
 
@@ -19,7 +20,7 @@ int ExecuteFile(const char* path) {
   Source source = Source::LoadFromFile(path);
 
   Context ctx;
-  ctx.RegisterStr("print");
+  AddBuiltins(&ctx);
 
   Tokenizer tokenizer;
   std::vector<Token> tokens;

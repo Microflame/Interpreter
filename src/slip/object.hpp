@@ -9,9 +9,8 @@
 namespace slip {
 
 struct Context;
-
 struct Object;
-using BuiltinFn = Object (*)(std::span<Object>, const Context&);
+using BuiltinFnPtr = Object (*)(std::span<Object>, const Context&);
 
 struct Object {
   struct UserFn {
@@ -42,7 +41,7 @@ struct Object {
     int64_t int_;
     double fp_;
     StrId str_id_;
-    BuiltinFn builtin_fn_;
+    BuiltinFnPtr builtin_fn_;
     UserFn user_fn_;
   };
 
@@ -69,7 +68,7 @@ Object MakeFloat(double val);
 Object MakeString(StrId val);
 Object MakeBool(bool val);
 Object MakeNone();
-Object MakeBuiltin(BuiltinFn fn);
+Object MakeBuiltin(BuiltinFnPtr fn);
 Object MakeUserFn(VariableIdx frame_size, StrBlockId args, StmtBlockId stmts);
 
 }  // namespace slip

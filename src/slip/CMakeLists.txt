@@ -10,6 +10,8 @@ set(SOURCES
     token.cpp
     tokenizer.cpp
 
+    builtin/functions.cpp
+
     util/es_to_string.cpp
     util/math.cpp
     util/string_tools.cpp

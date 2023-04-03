@@ -5,6 +5,7 @@
 #include "slip/expr.hpp"
 #include "slip/stmt.hpp"
 #include "slip/token_type.hpp"
+#include "slip/builtin/functions.hpp"
 
 namespace slip {
 
@@ -33,6 +34,7 @@ public:
   std::vector<ExprBlock> expr_blocks_;
   std::vector<StrBlock> str_blocks_;
   std::vector<TokenTypeBlock> token_type_blocks_;
+  std::vector<BuiltinFunction> builtin_functions_;
 
 private:
   std::vector<std::string> strs_;

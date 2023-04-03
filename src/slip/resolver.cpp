@@ -23,11 +23,10 @@ VarLocation Resolver::GetVarLocation(ResolveId id) const { return resolved_vars_
 
 void Resolver::ResolveStmts(const std::vector<StmtId>& stmts) {
   PushScope();
-  StrId id = ctx_.FindStrId("print");
-  if (id == -1) {
-    throw std::runtime_error("print id not found");
+
+  for (const BuiltinFunction& fn: ctx_.builtin_functions_) {
+    PushVar(fn.name);
   }
-  PushVar(id);
 
   for (StmtId id : stmts) {
     ResolveStmt(id);
